@@ -11,10 +11,10 @@ from sklearn.metrics import mean_squared_error, r2_score
 def regress(traintestset, n_splits, imax):
     x_train, x_test, y_train, y_test = traintestset
 
-    # Partial Linear S ()
+    # Partial Least Squares (PLS) Method
     x_values, rmsee, rmsecv = [], [], []
     for i in range(1, imax):
-        # Initiate cross validation (cv) model
+        # Initiate cross validation (CV) model
         model_cv = PLSRegression(n_components=i)
 
         # Setting up KFolds
@@ -72,7 +72,7 @@ def regress_plot(teststat, trainstat=None, optstat=None):
     ax1.set_xlim(lim1)
     ax1.set_xlabel('Retention Time')
     ax1.set_ylabel('Residue')
-    ax1.set_title('Residue of hatiction')
+    ax1.set_title('Residue of prediction')
     ax1.legend()
 
     # response plot
@@ -86,7 +86,7 @@ def regress_plot(teststat, trainstat=None, optstat=None):
     ax2.set_xlim(lims)
     ax2.set_ylim(lims)
     ax2.set_xlabel('Actual')
-    ax2.set_ylabel('haticted')
+    ax2.set_ylabel('predicted')
     ax2.set_title('Response Plot')
     ax2.legend()
     ax2.text(0, 0, '$R^2$= {:.2f}'.format(r2))

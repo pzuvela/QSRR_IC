@@ -14,11 +14,11 @@ def traintest(modeldata, limxc, limdelc, n_splits, max_component):
 
     # classification model
     print('-----------------Sequest Modelling-----------------')
-    gbc, gbcstats = classify(labelset)
-    classify_stats(gbcstats)
+    clf, clfstats = classify(labelset)
+    classify_stats(clfstats)
     labeltestset = labelset[1], labelset[3]
-    classify_plot(gbc, labeltestset)
-    df = add_status(gbc, df, scaled_data, 'Sequest')
+    classify_plot(clf, labeltestset)
+    df = add_status(clf, df, scaled_data, 'Sequest')
     print('')
 
     # regression model
@@ -36,17 +36,17 @@ def traintest(modeldata, limxc, limdelc, n_splits, max_component):
     scaled_data2, labelset2, trset2, sc2 = splitting(df2, 'QSRR')
 
     # classification with new labels
-    gbc2, gbcstats2 = classify(labelset2)
-    classify_stats(gbcstats2)
+    clf2, clfstats2 = classify(labelset2)
+    classify_stats(clfstats2)
     labeltestset2 = labelset2[1], labelset2[3]
-    classify_plot(gbc2, labeltestset2)
-    df2 = add_status(gbc2, df2, scaled_data2, 'QSRR')
+    classify_plot(clf2, labeltestset2)
+    df2 = add_status(clf2, df2, scaled_data2, 'QSRR')
     print('')
     print('---Completion of Training and Testing Procedure--_-')
     print('')
     print('')
     print('')
-    return sc, gbc, gbc2, optpls, mre
+    return sc, clf, clf2, optpls, mre
 
 
 def validate(df_valid, models, limxc, limdelc):

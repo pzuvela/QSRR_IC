@@ -14,26 +14,31 @@ def classify(traintestset):
 
     # GBC model
     clf = GradientBoostingClassifier()
+
     clf.fit(x_train, y_train)
     y_testpred = clf.predict(x_test)
 
-    return [gbc, [y_test, y_testpred]]
+    return [clf, [y_test, y_testpred]]
 
 
 def classify_plot(clf, testset):
     x_test, y_test = testset
 
     # Features importance in clf model
-    y = clf.feature_importances_
-    x = range(len(y))
-    fig4, ax4 = plt.subplots()
-    ax4.bar(x, y)
+    feature_importance = clf.feature_importances_
+    feature_importance = 100.0 * (feature_importance / feature_importance.max())
+    sorted_idx = np.argsort(feature_importance)
+    pos = np.arange(sorted_idx.shape[0]) + .5  # to rank from most important to least
     labels = ['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
               'A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
               'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V',
               're']
-    ax4.set_xticks(x)
-    ax4.set_xticklabels(labels, rotation=45, ha='right')
+    sorted_labels = [labels[i] for i in sorted_idx]
+    fig4, ax4 = plt.subplots()
+    ax4.barh(pos, feature_importance[sorted_idx], align='center')
+    ax4.set_xlabel('Relative Importance')
+    ax4.set_yticks(pos)
+    ax4.set_yticklabels(sorted_labels)
 
     # Probabilistic Distribution in clf model
     y_test_good_ind = (y_test == 1)
