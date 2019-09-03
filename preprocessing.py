@@ -36,7 +36,7 @@ def labelling(data, lim_xc, lim_delc, mre=None, method='xc'):
     elif method == 'mre' and mre is not None:
         data['labels'] = data.apply(lambda x: lambda3(x['Charge'], x['XC'], x['Delta Cn'], x['re'], mre), axis=1)
     else:
-        print('Unrecognised Method: Choose from xc, delc or mre')
+        print("Unrecognised Method: Choose from 'xc', 'delc' or 'mre'")
 
     return data
 

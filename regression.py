@@ -8,52 +8,66 @@ from sklearn.metrics import mean_squared_error, r2_score
 # splitting(df)[1] should be x_train ...
 
 
-def regress(traintestset, n_splits, imax):
+def regress(traintestset, n_splits, imax, optimise=False):
+    # Partial Least Squares (PLS) Method
     x_train, x_test, y_train, y_test = traintestset
 
-    # Partial Least Squares (PLS) Method
-    x_values, rmsee, rmsecv = [], [], []
-    for i in range(1, imax):
-        # Initiate cross validation (CV) model
-        model_cv = PLSRegression(n_components=i)
+    if optimise is True:
+        # Creating initial values
+        print(' ')
+        print('    --- Commencing Optimisation of Regression Model ---')
+        x_values, rmsee, rmsecv = [], [], []
+        for i in range(1, imax):
+            # Initiate cross validation (CV) model
+            pls_cv = PLSRegression(n_components=i)
 
-        # Setting up KFolds
-        kf = KFold(n_splits=n_splits)
+            # K-Fold Object
+            kf = KFold(n_splits=n_splits)
 
-        # Pre-loading variables
-        rmse_train = []
-        rmse_test = []
+            # Pre-loading variables
+            rmse_train, rmse_test = [], []
 
-        for train_i, test_i in kf.split(x_train, y_train):
-            # Defining the training set
-            x_train_cv = x_train[train_i]
-            y_train_cv = y_train[train_i]
+            for train_i, test_i in kf.split(x_train, y_train):
+                # Defining the training set
+                x_train_cv = x_train[train_i]
+                y_train_cv = y_train[train_i]
 
-            # Defining the left out set
-            x_test_cv = x_train[test_i]
-            y_test_cv = y_train[test_i]
+                # Defining the left out set
+                x_test_cv = x_train[test_i]
+                y_test_cv = y_train[test_i]
 
-            # Build PLS Model
-            model_cv.fit(x_train_cv, y_train_cv)
+                # Build PLS Model
+                pls_cv.fit(x_train_cv, y_train_cv)
 
-            # Generating new RMSE
-            y_train_hat_cv = model_cv.predict(x_train_cv)
-            y_test_hat_cv = model_cv.predict(x_test_cv)
-            rmse_train.append(np.sqrt(mean_squared_error(y_train_cv, y_train_hat_cv)))
-            rmse_test.append(np.sqrt(mean_squared_error(y_test_cv, y_test_hat_cv)))
-        x_values.append(i)
-        rmsee.append(np.mean(rmse_train))
-        rmsecv.append(np.mean(rmse_test))
+                # Generating RMSE
+                y_train_hat_cv = pls_cv.predict(x_train_cv)
+                y_test_hat_cv = pls_cv.predict(x_test_cv)
+                rmse_train.append(np.sqrt(mean_squared_error(y_train_cv, y_train_hat_cv)))
+                rmse_test.append(np.sqrt(mean_squared_error(y_test_cv, y_test_hat_cv)))
 
-    # use of optimal LVs on validation
-    optimal_lvs = 5
-    print('The number of nLVs used is {}'.format(optimal_lvs))
-    optpls = PLSRegression(n_components=optimal_lvs)
-    optpls.fit(x_train, y_train)
-    y_hat_test = optpls.predict(x_test)
-    y_hat_train = optpls.predict(x_train)
+            # Gathering Statistic
+            x_values.append(i)
+            rmsee.append(np.mean(rmse_train))
+            rmsecv.append(np.mean(rmse_test))
+            optstats = [x_values, rmsecv, rmsee]
 
-    return optpls, [y_train, y_hat_train], [y_test, y_hat_test], [x_values, rmsecv, rmsee]
+        # Implementing optimised parameters
+        lvs = 5  # some code to find knee joint
+        print('    Optimised Lvs: {}'.format(lvs))
+        print('    ------------ Completion of Optimisation -----------')
+        print(' ')
+
+    lvs = 5
+    print('The number of nLVs used is {}'.format(lvs))
+    pls = PLSRegression(n_components=lvs)
+    pls.fit(x_train, y_train)
+    y_hat_test = pls.predict(x_test)
+    y_hat_train = pls.predict(x_train)
+
+    if optimise is True:
+        return pls, [y_train, y_hat_train], [y_test, y_hat_test], optstats
+    else:
+        return pls, [y_train, y_hat_train], [y_test, y_hat_test]
 
 
 def regress_plot(teststat, trainstat=None, optstat=None):
@@ -124,7 +138,7 @@ def add_re(optpls, data, scaleddata, traindata=None):
     ydata = scaleddata[1]['tR / min'].values
     y_hat_all = optpls.predict(xdata)
 
-    re = 100 * np.absolute(np.transpose(y_hat_all) - ydata) / ydata
+    re = 100 * np.absolute(y_hat_all.ravel() - ydata) / ydata
 
     data['re'] = re.ravel()
 
