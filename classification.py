@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import random as rd
+import random as rand
 from matplotlib import pyplot as plt
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.metrics import confusion_matrix, make_scorer, roc_auc_score
@@ -13,8 +13,9 @@ from scipy.optimize import minimize, Bounds
 
 # classification
 def classify(traintestset, n_splits, optimise=False):
-    # GBC model
     x_train, x_test, y_train, y_test = traintestset
+
+    # GBC model
     clf = GradientBoostingClassifier()
 
     if optimise is True:
@@ -43,18 +44,18 @@ def classify(traintestset, n_splits, optimise=False):
             return -np.mean(score)
 
         # Creating bounds
-        n_est_min, n_est_max = 20, 100
+        n_est_min, n_est_max = 100, 1000
         min_sam_min, min_sam_max = 5, 50
-        lr_min, lr_max = 0.1, 1
+        lr_min, lr_max = 0.01, 0.1
         max_depth_min, max_depth_max = 1, 5
         bounds = Bounds([np.log(n_est_min), np.log(min_sam_min), np.sqrt(lr_min), np.log(max_depth_min)],
                         [np.log(n_est_max), np.log(min_sam_max), np.sqrt(lr_max), np.log(max_depth_max)])
 
         # Pre-loading initial values
-        n_est0 = np.log(rd.uniform(n_est_min, n_est_max))
-        min_sam0 = np.log(rd.uniform(min_sam_min, min_sam_max))
-        lr0 = np.sqrt(rd.uniform(lr_min, lr_max))
-        max_depth0 = np.log(rd.uniform(max_depth_min, max_depth_max))
+        n_est0 = np.log(rand.uniform(n_est_min, n_est_max))
+        min_sam0 = np.log(rand.uniform(min_sam_min, min_sam_max))
+        lr0 = np.sqrt(rand.uniform(lr_min, lr_max))
+        max_depth0 = np.log(rand.uniform(max_depth_min, max_depth_max))
         initial = np.array([n_est0, min_sam0, lr0, max_depth0])
         print('    ---------------- Initial Parameters ---------------')
         print('    n_estimators: {:.0f}\n'
@@ -127,9 +128,7 @@ def classify_plot(clf, testset):
     sorted_idx = np.argsort(feature_importance)
     pos = np.arange(sorted_idx.shape[0]) + .5  # to rank from most important to least
     labels = ['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
-              'A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
-              'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V',
-              're']
+              'error']
     sorted_labels = [labels[i] for i in sorted_idx]
     fig4, ax4 = plt.subplots()
     ax4.barh(pos, feature_importance[sorted_idx], align='center')

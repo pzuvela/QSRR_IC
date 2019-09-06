@@ -1,11 +1,11 @@
 import numpy as np
+import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 
 
 # labels generation
 def labelling(data, lim_xc, lim_delc, mre=None, method='xc'):
-
     def lambda1(charge, xc):
         if (charge == 1 and xc >= lim_xc[0]) or (charge == 2 and xc >= lim_xc[1]) \
                 or (charge >= 3 and xc >= lim_xc[2]):
@@ -20,9 +20,9 @@ def labelling(data, lim_xc, lim_delc, mre=None, method='xc'):
         else:
             return 0
 
-    def lambda3(charge, xc, delc, re, mean_re):
+    def lambda3(charge, xc, delc, error, mean_error):
         if ((charge == 1 and xc >= lim_xc[0]) or (charge == 2 and xc >= lim_xc[1])
-                or (charge >= 3 and xc >= lim_xc[2])) and delc >= lim_delc and re < mean_re:
+                or (charge >= 3 and xc >= lim_xc[2])) and delc >= lim_delc and error < mean_error:
             return 1
         else:
             return 0
@@ -34,48 +34,61 @@ def labelling(data, lim_xc, lim_delc, mre=None, method='xc'):
         data['labels'] = data.apply(lambda x: lambda2(x['Charge'], x['XC'], x['Delta Cn']), axis=1)
 
     elif method == 'mre' and mre is not None:
-        data['labels'] = data.apply(lambda x: lambda3(x['Charge'], x['XC'], x['Delta Cn'], x['re'], mre), axis=1)
+        data['labels'] = data.apply(lambda x: lambda3(x['Charge'], x['XC'], x['Delta Cn'], x['error'], mre), axis=1)
     else:
         print("Unrecognised Method: Choose from 'xc', 'delc' or 'mre'")
 
     return data
 
 
-def splitting(rawdata, type):
+def splitting(data, type):
     if type == 'Sequest':
-        xdata = rawdata[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
-                     'A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
-                     'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']].values
+        x_data = data[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
+                          'A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
+                          'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
     elif type == 'QSRR':
-        xdata = rawdata[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
-                         'A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
-                         'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V',
-                         're']].values
-    ydata = rawdata[['tR / min', 'labels']]
+        x_data = data[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
+                          'A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
+                          'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V',
+                          'error']]
+
+    y_data = data[['tR / min', 'labels']]
+
     # splitting
-    x_train_unscaled, x_test_unscaled, y_train, y_test = train_test_split(xdata, ydata, test_size=0.3)
+    x_train_unscaled, x_test_unscaled, y_train, y_test = train_test_split(x_data, y_data, test_size=0.3)
 
     # standardisation
     sc = StandardScaler()
-    x_train = sc.fit_transform(x_train_unscaled)
-    x_test = sc.transform(x_test_unscaled)
-    xdata = sc.transform(xdata)
+    x_train = pd.DataFrame(sc.fit_transform(x_train_unscaled), columns=x_train_unscaled.columns)
+    x_test = pd.DataFrame(sc.transform(x_test_unscaled), columns=x_test_unscaled.columns)
+    x_data = pd.DataFrame(sc.transform(x_data), columns=x_data.columns)
 
-    # splitting ydata
-    y_label_train = y_train['labels']
-    y_label_test = y_test['labels']
-    y_tr_train = y_train['tR / min']
-    y_tr_test = y_test['tR / min']
+    # splitting xdata
+    if type == 'Sequest':
+        x_train_clf = x_train[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp']]
+        x_test_clf = x_test[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp']]
+        x_train_reg = x_train[['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
+                               'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
+        x_test_reg = x_test[['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
+                             'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
+    elif type == 'QSRR':
+        x_train_clf = x_train[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp', 'error']]
+        x_test_clf = x_test[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp', 'error']]
+        x_train_reg = x_train[['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
+                               'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
+        x_test_reg = x_test[['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
+                             'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
 
-    # convert all to np.array
-    y_label_train = y_label_train.values
-    y_label_test = y_label_test.values
-    y_tr_train = y_tr_train.values
-    y_tr_test = y_tr_test.values
+    # splitting y_data
+    y_train_clf = y_train['labels'].values
+    y_test_clf = y_test['labels'].values
+    y_train_reg = y_train['tR / min'].values
+    y_test_reg = y_test['tR / min'].values
 
+    tr_max = np.max(y_train_reg)
 
-    return [[xdata, ydata],
-            [x_train, x_test, y_label_train, y_label_test],
-            [x_train, x_test, y_tr_train, y_tr_test],
-            sc]
-    # [[scaled data], [for classify], [for regress]]
+    return [[x_data, y_data],
+            [x_train_clf, x_test_clf, y_train_clf, y_test_clf],
+            [x_train_reg, x_test_reg, y_train_reg, y_test_reg],
+            sc, tr_max]
+    # [[scaled data], [for classify], [for regress], scaler and tr_max for validation]

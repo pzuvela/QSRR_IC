@@ -1,22 +1,29 @@
 import numpy as np
+import random as rand
 from matplotlib import pyplot as plt
-from sklearn.model_selection import KFold
+from scipy.optimize import Bounds, minimize
+from sklearn.model_selection import KFold, cross_val_score
 from sklearn.cross_decomposition import PLSRegression
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.metrics import mean_squared_error, r2_score, make_scorer
+
 
 # input from preprocessing
 # splitting(df)[1] should be x_train ...
 
 
-def regress(traintestset, n_splits, imax, optimise=False):
-    # Partial Least Squares (PLS) Method
+def regress_pls(traintestset, n_splits, imax, optimise=False):
     x_train, x_test, y_train, y_test = traintestset
+
+    # Partial Least Squares (PLS) Method
 
     if optimise is True:
         # Creating initial values
         print(' ')
         print('    --- Commencing Optimisation of Regression Model ---')
-        x_values, rmsee, rmsecv = [], [], []
+        nlvs = np.zeros(imax - 1)
+        rmsee = np.zeros(imax - 1)
+        rmsecv = np.zeros(imax - 1)
         for i in range(1, imax):
             # Initiate cross validation (CV) model
             pls_cv = PLSRegression(n_components=i)
@@ -25,7 +32,9 @@ def regress(traintestset, n_splits, imax, optimise=False):
             kf = KFold(n_splits=n_splits)
 
             # Pre-loading variables
-            rmse_train, rmse_test = [], []
+            rmse_train = np.zeros(n_splits)
+            rmse_test = np.zeros(n_splits)
+            j = 0
 
             for train_i, test_i in kf.split(x_train, y_train):
                 # Defining the training set
@@ -40,34 +49,125 @@ def regress(traintestset, n_splits, imax, optimise=False):
                 pls_cv.fit(x_train_cv, y_train_cv)
 
                 # Generating RMSE
-                y_train_hat_cv = pls_cv.predict(x_train_cv)
-                y_test_hat_cv = pls_cv.predict(x_test_cv)
-                rmse_train.append(np.sqrt(mean_squared_error(y_train_cv, y_train_hat_cv)))
-                rmse_test.append(np.sqrt(mean_squared_error(y_test_cv, y_test_hat_cv)))
+                y_test_hat_cv = pls_cv.predict(x_test_cv).ravel()
+                rmse_test[j] = (np.sqrt(mean_squared_error(y_test_cv, y_test_hat_cv)))
+                # rmse_test[j] = 100 * np.sqrt(np.mean(np.square((y_test_hat_cv - y_test_cv) / y_test_cv)))
+
+                y_train_hat = pls_cv.predict(x_train).ravel()
+                # rmse_train[j] = np.sqrt(mean_squared_error(y_train, y_train_hat))
+                rmse_train[j] = np.sqrt(np.mean(np.square(np.subtract(y_train, y_train_hat))))
+                j += 1
 
             # Gathering Statistic
-            x_values.append(i)
-            rmsee.append(np.mean(rmse_train))
-            rmsecv.append(np.mean(rmse_test))
-            optstats = [x_values, rmsecv, rmsee]
+            nlvs[i - 1] = i
+            rmsee[i - 1] = np.mean(rmse_train)
+            rmsecv[i - 1] = np.mean(rmse_test)
 
         # Implementing optimised parameters
+        optstats = [nlvs, rmsecv, rmsee]
         lvs = 5  # some code to find knee joint
         print('    Optimised Lvs: {}'.format(lvs))
         print('    ------------ Completion of Optimisation -----------')
         print(' ')
+    else:
+        optstats = None
+        lvs = 5
 
-    lvs = 5
     print('The number of nLVs used is {}'.format(lvs))
     pls = PLSRegression(n_components=lvs)
     pls.fit(x_train, y_train)
     y_hat_test = pls.predict(x_test)
     y_hat_train = pls.predict(x_train)
 
+    return pls, [y_train, y_hat_train], [y_test, y_hat_test], optstats
+
+
+def regress_gbr(traintestset, n_splits, optimise=False):
+    x_train, x_test, y_train, y_test = traintestset
+
+    # Gradient Boosting Regressor
+    gbr = GradientBoostingRegressor()
+
     if optimise is True:
-        return pls, [y_train, y_hat_train], [y_test, y_hat_test], optstats
-    else:
-        return pls, [y_train, y_hat_train], [y_test, y_hat_test]
+        print(' ')
+        print('    --- Commencing Optimisation of Regression Model ---')
+
+        def fun(x):
+            # Descaling Parameters
+            n_est = int(np.round(np.exp(x[0]), decimals=0))
+            min_sam = int(np.round(np.exp(x[1]), decimals=0))
+            lr = x[2] ** 2
+            max_depth = int(np.round(np.exp(x[3]), decimals=0))
+
+            opt_gbr = GradientBoostingRegressor(n_estimators=n_est,
+                                                min_samples_split=min_sam,
+                                                learning_rate=lr,
+                                                max_depth=max_depth)
+
+            # K-Fold object
+            kfold = KFold(n_splits=n_splits)
+
+            # Scoring object
+            def rmse(y_true, y_pred):
+                return np.sqrt(mean_squared_error(y_true, y_pred))
+
+            scorer = make_scorer(rmse, greater_is_better=False)
+            # CV score
+            score = cross_val_score(opt_gbr, x_train, y_train, cv=kfold, scoring=scorer)
+
+            return np.mean(score)
+
+        # Creating bounds
+        n_est_min, n_est_max = 100, 1000
+        min_sam_min, min_sam_max = 5, 50
+        lr_min, lr_max = 0.01, 0.1
+        max_depth_min, max_depth_max = 1, 5
+        bounds = Bounds([np.log(n_est_min), np.log(min_sam_min), np.sqrt(lr_min), np.log(max_depth_min)],
+                        [np.log(n_est_max), np.log(min_sam_max), np.sqrt(lr_max), np.log(max_depth_max)])
+
+        # Pre-loading initial values
+        n_est0 = np.log(rand.uniform(n_est_min, n_est_max))
+        min_sam0 = np.log(rand.uniform(min_sam_min, min_sam_max))
+        lr0 = np.sqrt(rand.uniform(lr_min, lr_max))
+        max_depth0 = np.log(rand.uniform(max_depth_min, max_depth_max))
+        initial = np.array([n_est0, min_sam0, lr0, max_depth0])
+        print('    ---------------- Initial Parameters ---------------')
+        print('    n_estimators: {:.0f}\n'
+              '    min_sample_split: {:.0f}\n'
+              '    learning_rate: {:.2f} \n'
+              '    max_depth: {:.0f}'
+              .format(np.exp(n_est0), np.exp(min_sam0), np.square(lr0), np.exp(max_depth0))
+              )
+        print('    ---------------------------------------------------')
+
+        # Begin Optimisation
+        opt = minimize(fun, initial, method='trust-constr', bounds=bounds, options={'maxiter': 100})
+        x_dict = {'n_estimators': int(np.round(np.exp(opt.x[0]), decimals=0)),
+                  'min_samples_split': int(np.round(np.exp(opt.x[1]), decimals=0)),
+                  'learning_rate': np.square(opt.x[2]),
+                  'max_depth': int(np.round(np.exp(opt.x[3]), decimals=0))
+                  }
+
+        # Implementing optimised parameters
+        gbr.set_params(**x_dict)
+
+        print('    ----------------- Final Parameters ----------------')
+        print('    n_estimators: {:.0f}\n'
+              '    min_sample_split: {:.0f}\n'
+              '    learning_rate: {:.2f} \n'
+              '    max_depth: {:.0f}\n'
+              '    Final CV-MSE: {:.2f}'
+              .format(np.exp(opt.x[0]), np.exp(opt.x[1]), np.square(opt.x[2]), np.exp(opt.x[3]), -opt.fun)
+              )
+        print('    ---------------------------------------------------')
+        print('    ------------ Completion of Optimisation -----------')
+        print(' ')
+
+    gbr.fit(x_train, y_train)
+    y_hat_train = gbr.predict(x_train)
+    y_hat_test = gbr.predict(x_test)
+
+    return gbr, [y_train, y_hat_train], [y_test, y_hat_test], None
 
 
 def regress_plot(teststat, trainstat=None, optstat=None):
@@ -94,13 +194,13 @@ def regress_plot(teststat, trainstat=None, optstat=None):
     ax2.scatter(y_test, y_hat_test, c='r', edgecolors='k', label='Test Set')
     lims = [
         np.min([ax2.get_xlim(), ax2.get_ylim()]),  # min of both axes
-        np.max([ax2.get_xlim(), ax2.get_ylim()])   # max of both axes
+        np.max([ax2.get_xlim(), ax2.get_ylim()])  # max of both axes
     ]
     ax2.plot(lims, lims, c='k')
     ax2.set_xlim(lims)
     ax2.set_ylim(lims)
     ax2.set_xlabel('Actual')
-    ax2.set_ylabel('predicted')
+    ax2.set_ylabel('Predicted')
     ax2.set_title('Response Plot')
     ax2.legend()
     ax2.text(0, 0, '$R^2$= {:.2f}'.format(r2))
@@ -124,7 +224,7 @@ def regress_plot(teststat, trainstat=None, optstat=None):
         ax3.plot(x_values, rmsee, c='r', label='RMSEE')
         ax3.set_xticks(x_values)
         ax3.set_xlabel('Number of LVs')
-        ax3.set_ylabel('Error / %')
+        ax3.set_ylabel('Error')
         ax3.set_title('Optimisation of LVs')
         ax3.legend()
 
@@ -132,22 +232,23 @@ def regress_plot(teststat, trainstat=None, optstat=None):
     plt.show()
 
 
-def add_re(optpls, data, scaleddata, traindata=None):
-    # addition of re into data
-    xdata = scaleddata[0]
-    ydata = scaleddata[1]['tR / min'].values
-    y_hat_all = optpls.predict(xdata)
+def add_error(optpls, data, scaleddata, traindata=None):
+    # addition of error into data
+    x_data_reg = scaleddata[0][['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
+                                'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
+    y_data = scaleddata[1]['tR / min'].values
+    y_hat_all = optpls.predict(x_data_reg)
 
-    re = 100 * np.absolute(y_hat_all.ravel() - ydata) / ydata
+    re = 100 * np.abs((y_hat_all.ravel() - y_data) / y_data)
 
-    data['re'] = re.ravel()
+    data['error'] = re.ravel()
 
     if traindata is not None:
         # calculation of mre
         [y_train, y_hat_train] = traindata
-        train_re = 100 * np.absolute(y_hat_train - y_train) / y_train
-        mre = np.mean(train_re)
-        print('The training MRE is {:.2f}'.format(mre))
-        return data, mre
+        msre = np.square(100 * (y_hat_train - y_train) / y_train).mean()
+        rmsre = np.sqrt(np.mean(msre))
+        print('The training RMSRE is {:.2f}%'.format(rmsre))
+        return data, rmsre
     else:
         return data
