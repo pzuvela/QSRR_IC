@@ -5,6 +5,8 @@ from process import traintest, validate
 
 print('Initiating Input Data and Selected parameters...', end=' ')
 modeldata = pd.read_csv(os.getcwd() + '/data/model_protein.csv')
+# modeldata = pd.read_csv(os.getcwd() + '/data/Bacillus_subtilis_deltaPrpE.csv')
+# validationdata = pd.read_csv(os.getcwd() + '/data/model_protein.csv')
 # validationdata = pd.read_csv(os.getcwd() + '/data/HeLaK.csv')
 # validationdata = pd.read_csv(os.getcwd() + '/data/Bacillus_subtilis_sp.csv')
 validationdata = pd.read_csv(os.getcwd() + '/data/Bacillus_subtilis_deltaPrpE.csv')

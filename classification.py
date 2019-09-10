@@ -131,7 +131,7 @@ def classify_plot(clf, testset):
               'error']
     sorted_labels = [labels[i] for i in sorted_idx]
     fig4, ax4 = plt.subplots()
-    ax4.barh(pos, feature_importance[sorted_idx], align='center')
+    ax4.barh(pos, feature_importance[sorted_idx], color='C1', align='center')
     ax4.set_title('Variables Importance')
     ax4.set_ylabel('Variables')
     ax4.set_xlabel('Normalised Importance')
@@ -145,8 +145,8 @@ def classify_plot(clf, testset):
     x = np.linspace(1, len(y) - 1, len(y), dtype='int')
 
     fig5, ax5 = plt.subplots()
-    ax5.scatter(x[y_test_bad_ind], y[y_test_bad_ind], c='r', edgecolors='k')
-    ax5.scatter(x[y_test_good_ind], y[y_test_good_ind], c='b', edgecolors='k')
+    ax5.scatter(x[y_test_bad_ind], y[y_test_bad_ind], c='C3')
+    ax5.scatter(x[y_test_good_ind], y[y_test_good_ind], c='C2')
     lim1 = [np.min(ax5.get_xlim()), np.max(ax5.get_xlim())]
     lim2 = [0.5, 0.5]
     ax5.set_title('Prediction Probability Distribution')

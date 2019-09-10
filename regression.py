@@ -6,6 +6,7 @@ from sklearn.model_selection import KFold, cross_val_score
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.metrics import mean_squared_error, r2_score, make_scorer
+from petar.ad import ad
 
 
 # input from preprocessing
@@ -79,7 +80,7 @@ def regress_pls(traintestset, n_splits, imax, optimise=False):
     y_hat_test = pls.predict(x_test)
     y_hat_train = pls.predict(x_train)
 
-    return pls, [y_train, y_hat_train], [y_test, y_hat_test], optstats
+    return pls, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test], optstats
 
 
 def regress_gbr(traintestset, n_splits, optimise=False):
@@ -167,19 +168,23 @@ def regress_gbr(traintestset, n_splits, optimise=False):
     y_hat_train = gbr.predict(x_train)
     y_hat_test = gbr.predict(x_test)
 
-    return gbr, [y_train, y_hat_train], [y_test, y_hat_test], None
+    return gbr, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test], None
 
 
 def regress_plot(teststat, trainstat=None, optstat=None):
-    y_test, y_hat_test = teststat
+    x_test, y_test, y_hat_test = teststat
+    y_hat_test = y_hat_test.ravel()
 
     # Model Statistics
-    r2 = r2_score(y_test, y_hat_test)
-    test_residue = y_hat_test.ravel() - y_test
+    test_residue = y_hat_test - y_test
+
+    # res histogram
+    fig7, ax7 = plt.subplots()
+    ax7.hist(test_residue)
 
     # residue plot
     fig1, ax1 = plt.subplots()
-    ax1.scatter(y_test, test_residue, c='r', edgecolors='k', label='Test Set')
+    ax1.scatter(y_test, test_residue, c='C0', label='Test Set')
     lim1 = [np.min(ax1.get_xlim()), np.max(ax1.get_xlim())]
     lim2 = [0, 0]
     ax1.plot(lim1, lim2, c='k')
@@ -191,7 +196,7 @@ def regress_plot(teststat, trainstat=None, optstat=None):
 
     # response plot
     fig2, ax2 = plt.subplots()
-    ax2.scatter(y_test, y_hat_test, c='r', edgecolors='k', label='Test Set')
+    ax2.scatter(y_test, y_hat_test, c='C0', label='Test Set')
     lims = [
         np.min([ax2.get_xlim(), ax2.get_ylim()]),  # min of both axes
         np.max([ax2.get_xlim(), ax2.get_ylim()])  # max of both axes
@@ -203,16 +208,21 @@ def regress_plot(teststat, trainstat=None, optstat=None):
     ax2.set_ylabel('Predicted')
     ax2.set_title('Response Plot')
     ax2.legend()
-    ax2.text(0, 0, '$R^2$= {:.2f}'.format(r2))
 
     if trainstat is not None:
-        [y_train, y_hat_train] = trainstat
+        x_train, y_train, y_hat_train = trainstat
+        y_hat_train = y_hat_train.ravel()
 
-        train_residue = y_hat_train.ravel() - y_train
-        ax1.scatter(y_train, train_residue, c='b', edgecolors='k', label='Train Set')
+        train_residue = y_hat_train - y_train
+
+        ad(y_train, y_hat_train, y_test, y_hat_test, x_train, x_test, 'yes')
+
+        ax7.hist(train_residue, alpha=0.7)
+
+        ax1.scatter(y_train, train_residue, alpha=0.7, c='C1', label='Train Set')
         ax1.legend()
 
-        ax2.scatter(y_train, y_hat_train, c='b', edgecolors='k', label='Train Set')
+        ax2.scatter(y_train, y_hat_train, alpha=0.7, c='C1', label='Train Set')
         ax2.legend()
 
     if optstat is not None:
@@ -220,8 +230,8 @@ def regress_plot(teststat, trainstat=None, optstat=None):
 
         # LV optimisation plot
         fig3, ax3 = plt.subplots()
-        ax3.plot(x_values, rmsecv, c='b', label='RMSECV')
-        ax3.plot(x_values, rmsee, c='r', label='RMSEE')
+        ax3.plot(x_values, rmsecv, label='RMSECV')
+        ax3.plot(x_values, rmsee, label='RMSEE')
         ax3.set_xticks(x_values)
         ax3.set_xlabel('Number of LVs')
         ax3.set_ylabel('Error')
@@ -245,7 +255,7 @@ def add_error(optpls, data, scaleddata, traindata=None):
 
     if traindata is not None:
         # calculation of mre
-        [y_train, y_hat_train] = traindata
+        x_train, y_train, y_hat_train = traindata
         msre = np.square(100 * (y_hat_train - y_train) / y_train).mean()
         rmsre = np.sqrt(np.mean(msre))
         print('The training RMSRE is {:.2f}%'.format(rmsre))

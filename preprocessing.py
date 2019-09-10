@@ -44,13 +44,13 @@ def labelling(data, lim_xc, lim_delc, mre=None, method='xc'):
 def splitting(data, type):
     if type == 'Sequest':
         x_data = data[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
-                          'A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
-                          'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
+                       'A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
+                       'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
     elif type == 'QSRR':
         x_data = data[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
-                          'A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
-                          'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V',
-                          'error']]
+                       'A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
+                       'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V',
+                       'error']]
 
     y_data = data[['tR / min', 'labels']]
 
@@ -92,3 +92,12 @@ def splitting(data, type):
             [x_train_reg, x_test_reg, y_train_reg, y_test_reg],
             sc, tr_max]
     # [[scaled data], [for classify], [for regress], scaler and tr_max for validation]
+
+
+def feature_selection(df_valid, trainstat, method='tr'):
+    tr_max, reg_traindata = trainstat
+
+    if method == 'tr':
+        df_valid = df_valid.loc[df_valid['tR / min'] < tr_max]
+        return df_valid
+
