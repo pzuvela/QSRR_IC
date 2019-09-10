@@ -1,7 +1,7 @@
 # Importing packages
 import pandas as pd
-from preprocessing import labelling, splitting
-from classification import classify, classify_stats, add_status, classify_plot
+from preprocessing import labelling, splitting, feature_selection
+from classification import classify, classify_stats, classify_plot
 from regression import regress_pls, regress_plot, add_error, regress_gbr
 
 
@@ -53,26 +53,32 @@ def traintest(modeldata, limxc, limdelc, n_splits, max_component):
     return sc, sc2, clf, clf2, reg, mre, tr_max, reg_traindata
 
 
-def validate(df_valid, models, limxc, limdelc):
+def validate(validationdata, models, limxc, limdelc):
     print('######## Commencing Validation Procedure #########')
     print('')
 
     sc, sc2, clf, clf2, reg, mre, tr_max, reg_traindata = models
-    df_valid = df_valid.loc[df_valid['tR / min'] < tr_max]
-    df_valid = labelling(df_valid, limxc, limdelc, method='delc')
+
+    df_valid = labelling(validationdata, limxc, limdelc, method='delc')
 
     x_data = df_valid[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
                        'A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
                        'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
+    y_data = df_valid[['tR / min', 'labels']]
+
     # Scaling
     x_data = pd.DataFrame(sc.transform(x_data), columns=x_data.columns)
+
+    # Restricting validation set
+    print('Initial shape of validation Set : {}'.format(df_valid.shape))
+    df_valid, x_data, y_data = feature_selection([df_valid, x_data, y_data], [tr_max, reg_traindata], ad=True)
+    print('Final shape of validation Set : {}'.format(df_valid.shape))
 
     # Splitting x and y data for clf and reg models
     x_data_clf = x_data[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp']]
     x_data_reg = x_data[['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
                          'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
 
-    y_data = df_valid[['tR / min', 'labels']]
     y_data_clf = y_data['labels']
     y_data_reg = y_data['tR / min']
 

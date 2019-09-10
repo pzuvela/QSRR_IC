@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
+from petar.ad import hat_matrix
 
 
 # labels generation
@@ -15,14 +16,14 @@ def labelling(data, lim_xc, lim_delc, mre=None, method='xc'):
 
     def lambda2(charge, xc, delc):
         if ((charge == 1 and xc >= lim_xc[0]) or (charge == 2 and xc >= lim_xc[1])
-                or (charge >= 3 and xc >= lim_xc[2])) and delc >= lim_delc:
+            or (charge >= 3 and xc >= lim_xc[2])) and delc >= lim_delc:
             return 1
         else:
             return 0
 
     def lambda3(charge, xc, delc, error, mean_error):
         if ((charge == 1 and xc >= lim_xc[0]) or (charge == 2 and xc >= lim_xc[1])
-                or (charge >= 3 and xc >= lim_xc[2])) and delc >= lim_delc and error < mean_error:
+            or (charge >= 3 and xc >= lim_xc[2])) and delc >= lim_delc and error < mean_error:
             return 1
         else:
             return 0
@@ -94,10 +95,33 @@ def splitting(data, type):
     # [[scaled data], [for classify], [for regress], scaler and tr_max for validation]
 
 
-def feature_selection(df_valid, trainstat, method='tr'):
+def feature_selection(df, trainstat, tr=True, ad=False):
+    # NOTE THAT ALL DATA SHOULD BE SCALED PRIOR TO SUBMISSION TO THIS FUNCTION
     tr_max, reg_traindata = trainstat
+    x_train, y_train, y_hat_train = reg_traindata
+    df_valid, x_data, y_data = df  # df_valid is unscaled
 
-    if method == 'tr':
-        df_valid = df_valid.loc[df_valid['tR / min'] < tr_max]
-        return df_valid
+    if tr is True:
+        y_data_reg = y_data['tR / min']
 
+        df_valid = df_valid.loc[y_data_reg < tr_max]
+        x_data = x_data.loc[y_data_reg < tr_max]
+        y_data = y_data.loc[y_data_reg < tr_max]
+
+    if ad is True:
+        x_data_reg = x_data[['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
+                             'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
+
+        # need to find h for each data point
+        h1, h2 = hat_matrix(x_train, x_data_reg)
+
+        # need to find critical h of training set
+        k = np.size(x_train, axis=1) + 1
+        hat_star = 3 * (k / len(h1))
+
+        selection = [True if i >= hat_star else False for i in h2]
+        df_valid = df_valid[selection]
+        x_data = x_data[selection]
+        y_data = y_data[selection]
+
+    return df_valid, x_data, y_data
