@@ -16,14 +16,14 @@ def labelling(data, lim_xc, lim_delc, mre=None, method='xc'):
 
     def lambda2(charge, xc, delc):
         if ((charge == 1 and xc >= lim_xc[0]) or (charge == 2 and xc >= lim_xc[1])
-            or (charge >= 3 and xc >= lim_xc[2])) and delc >= lim_delc:
+                or (charge >= 3 and xc >= lim_xc[2])) and delc >= lim_delc:
             return 1
         else:
             return 0
 
     def lambda3(charge, xc, delc, error, mean_error):
         if ((charge == 1 and xc >= lim_xc[0]) or (charge == 2 and xc >= lim_xc[1])
-            or (charge >= 3 and xc >= lim_xc[2])) and delc >= lim_delc and error < mean_error:
+                or (charge >= 3 and xc >= lim_xc[2])) and delc >= lim_delc and error < mean_error:
             return 1
         else:
             return 0

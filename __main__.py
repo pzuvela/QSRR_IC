@@ -23,7 +23,7 @@ print('')
 models_final_train = list()
 models_final_valid = list()
 
-max_iter = 10
+max_iter = 100
 
 for i in range(max_iter):
     # warnings.simplefilter('ignore')
@@ -32,8 +32,12 @@ for i in range(max_iter):
     validate(validationdata, models_final_train[i], limxc, limdelc)
 
 mre_final = [models_final_train[i][5] for i in range(max_iter)]
-plt.hist((mre_final-np.min(mre_final)) / (np.max(mre_final) - np.min(mre_final)), bins=25)
+plt.hist(mre_final, bins=20, density=True)
 xmin, xmax = plt.xlim()
-p = norm.pdf(np.linspace(xmin, xmax, 100), np.mean(mre_final), np.std(mre_final))
+
+# np.mean(mre_final), np.std(mre_final)
+
+mean_mre, std_mre = norm.fit(mre_final)
+p = norm.pdf(np.linspace(xmin, xmax, 100), mean_mre, std_mre)
 plt.plot(np.linspace(xmin, xmax, 100), p)
 plt.show()
