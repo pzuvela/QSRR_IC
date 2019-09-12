@@ -37,7 +37,6 @@ models_final_train = Parallel(n_jobs=1, verbose=1, backend="threading")(map(dela
                                                                         zip(range(max_iter))))
 
 
-
 """
 for i in range(max_iter):
     # warnings.simplefilter('ignore')
