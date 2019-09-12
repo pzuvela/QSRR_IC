@@ -1,5 +1,6 @@
 import numpy as np
 import random as rand
+import pandas as pd
 from matplotlib import pyplot as plt
 from scipy.optimize import Bounds, minimize
 from sklearn.model_selection import KFold, cross_val_score
@@ -15,6 +16,7 @@ from petar.ad import ad
 
 def regress_pls(traintestset, n_splits, imax, optimise=False):
     x_train, x_test, y_train, y_test = traintestset
+    x_train = x_train.values
 
     # Partial Least Squares (PLS) Method
 
@@ -23,7 +25,7 @@ def regress_pls(traintestset, n_splits, imax, optimise=False):
         print(' ')
         print('    --- Commencing Optimisation of Regression Model ---')
         nlvs = np.zeros(imax - 1)
-        rmsee = np.zeros(imax - 1)
+        # rmsee = np.zeros(imax - 1)
         rmsecv = np.zeros(imax - 1)
         for i in range(1, imax):
             # Initiate cross validation (CV) model
@@ -36,6 +38,13 @@ def regress_pls(traintestset, n_splits, imax, optimise=False):
             rmse_train = np.zeros(n_splits)
             rmse_test = np.zeros(n_splits)
             j = 0
+
+            # # Construct Scoring Object
+            # def rmse(y_true, y_pred):
+            #     return np.sqrt(np.square(100 * (y_pred - y_true) / y_true).mean())
+            # scorer = make_scorer(rmse, greater_is_better=False)
+            #
+            # rmse_test = cross_val_score(pls_cv, x_train, y_train, cv=kf, scoring=scorer)
 
             for train_i, test_i in kf.split(x_train, y_train):
                 # Defining the training set
@@ -54,19 +63,20 @@ def regress_pls(traintestset, n_splits, imax, optimise=False):
                 rmse_test[j] = (np.sqrt(mean_squared_error(y_test_cv, y_test_hat_cv)))
                 # rmse_test[j] = 100 * np.sqrt(np.mean(np.square((y_test_hat_cv - y_test_cv) / y_test_cv)))
 
-                y_train_hat = pls_cv.predict(x_train).ravel()
+                # y_train_hat = pls_cv.predict(x_train).ravel()
                 # rmse_train[j] = np.sqrt(mean_squared_error(y_train, y_train_hat))
-                rmse_train[j] = np.sqrt(np.mean(np.square(np.subtract(y_train, y_train_hat))))
+                # rmse_train[j] = np.sqrt(np.mean(np.square(np.subtract(y_train, y_train_hat))))
                 j += 1
 
             # Gathering Statistic
             nlvs[i - 1] = i
-            rmsee[i - 1] = np.mean(rmse_train)
+            # rmsee[i - 1] = np.mean(rmse_train)
             rmsecv[i - 1] = np.mean(rmse_test)
 
         # Implementing optimised parameters
-        optstats = [nlvs, rmsecv, rmsee]
-        lvs = 5  # some code to find knee joint
+        # optstats = [nlvs, rmsecv, rmsee]
+        optstats = [nlvs, rmsecv]
+        lvs = knee(nlvs, rmsecv)  # some code to find knee point
         print('    Optimised Lvs: {}'.format(lvs))
         print('    ------------ Completion of Optimisation -----------')
         print(' ')
@@ -79,6 +89,7 @@ def regress_pls(traintestset, n_splits, imax, optimise=False):
     pls.fit(x_train, y_train)
     y_hat_test = pls.predict(x_test)
     y_hat_train = pls.predict(x_train)
+    x_train = pd.DataFrame(x_train, columns=x_test.columns)
 
     return pls, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test], optstats
 
@@ -112,7 +123,7 @@ def regress_gbr(traintestset, n_splits, optimise=False):
             def rmse(y_true, y_pred):
                 return np.sqrt(np.square(100 * (y_pred - y_true) / y_true).mean())
 
-            scorer = make_scorer(rmse)
+            scorer = make_scorer(rmse, greater_is_better=False)
             # CV score
             score = cross_val_score(opt_gbr, x_train, y_train, cv=kfold, scoring=scorer)
             print(np.mean(score))
@@ -192,7 +203,7 @@ def regress_plot(teststat, trainstat=None, optstat=None):
 
     # res histogram
     fig7, ax7 = plt.subplots()
-    ax7.hist(test_residue, color='C0')
+    ax7.hist(test_residue, color='C0', density=True)
 
     # residue plot
     fig1, ax1 = plt.subplots()
@@ -229,7 +240,7 @@ def regress_plot(teststat, trainstat=None, optstat=None):
 
         ad(y_train, y_hat_train, y_test, y_hat_test, x_train, x_test, 'yes')
 
-        ax7.hist(train_residue, color='C1', alpha=0.7)
+        ax7.hist(train_residue, color='C1', alpha=0.7, density=True)
 
         ax1.scatter(y_train, train_residue, alpha=0.7, c='C1', label='Train Set')
         ax1.legend()
@@ -238,12 +249,12 @@ def regress_plot(teststat, trainstat=None, optstat=None):
         ax2.legend()
 
     if optstat is not None:
-        [x_values, rmsecv, rmsee] = optstat
+        [x_values, rmsecv] = optstat
 
         # LV optimisation plot
         fig3, ax3 = plt.subplots()
         ax3.plot(x_values, rmsecv, label='RMSECV')
-        ax3.plot(x_values, rmsee, label='RMSEE')
+        # ax3.plot(x_values, rmsee, label='RMSEE')
         ax3.set_xticks(x_values)
         ax3.set_xlabel('Number of LVs')
         ax3.set_ylabel('Error')
@@ -251,7 +262,7 @@ def regress_plot(teststat, trainstat=None, optstat=None):
         ax3.legend()
 
     print('------------------Plots Generated------------------')
-    # plt.show()
+    plt.show()
 
 
 def add_error(optpls, data, scaleddata, traindata=None):
@@ -274,3 +285,17 @@ def add_error(optpls, data, scaleddata, traindata=None):
         return data, rmsre
     else:
         return data
+
+
+def knee(nlvs, rmsecv):
+    del1, del2 = [], []
+    for i in range(0, len(nlvs)-1):
+        del1.append(rmsecv[i+1] - rmsecv[i])
+
+    for j in range(0, len(del1)-1):
+        del2.append(del1[j+1] - del1[j])
+
+    max_del2 = np.argmax(del2)
+    kneept = nlvs[max_del2 + 2]
+    return int(kneept)
+

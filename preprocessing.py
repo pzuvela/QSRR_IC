@@ -56,7 +56,7 @@ def splitting(data, type):
     y_data = data[['tR / min', 'labels']]
 
     # splitting
-    x_train_unscaled, x_test_unscaled, y_train, y_test = train_test_split(x_data, y_data, test_size=0.3)
+    x_train_unscaled, x_test_unscaled, y_train, y_test = train_test_split(x_data, y_data, test_size=0.3, shuffle=True)
 
     # standardisation
     sc = StandardScaler()
