@@ -5,7 +5,7 @@ from scipy.optimize import Bounds, minimize
 from sklearn.model_selection import KFold, cross_val_score
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.metrics import mean_squared_error, r2_score, make_scorer
+from sklearn.metrics import mean_squared_error, make_scorer
 from petar.ad import ad
 
 
@@ -99,7 +99,7 @@ def regress_gbr(traintestset, n_splits, optimise=False):
             min_sam = int(np.round(np.exp(x[1]), decimals=0))
             lr = x[2] ** 2
             max_depth = int(np.round(np.exp(x[3]), decimals=0))
-
+            print(n_est, min_sam, lr, max_depth)
             opt_gbr = GradientBoostingRegressor(n_estimators=n_est,
                                                 min_samples_split=min_sam,
                                                 learning_rate=lr,
@@ -110,28 +110,36 @@ def regress_gbr(traintestset, n_splits, optimise=False):
 
             # Scoring object
             def rmse(y_true, y_pred):
-                return np.sqrt(mean_squared_error(y_true, y_pred))
+                return np.sqrt(np.square(100 * (y_pred - y_true) / y_true).mean())
 
-            scorer = make_scorer(rmse, greater_is_better=False)
+            scorer = make_scorer(rmse)
             # CV score
             score = cross_val_score(opt_gbr, x_train, y_train, cv=kfold, scoring=scorer)
+            print(np.mean(score))
 
             return np.mean(score)
 
+        def constr_fun(x):
+            c = (np.exp(x[0]) / x[2]**2) - x[4]
+            return c
+
         # Creating bounds
-        n_est_min, n_est_max = 100, 1000
-        min_sam_min, min_sam_max = 5, 50
-        lr_min, lr_max = 0.01, 0.1
+        n_est_min, n_est_max = 50, 500
+        min_sam_min, min_sam_max = 2, 10
+        lr_min, lr_max = 0.01, 0.99
         max_depth_min, max_depth_max = 1, 5
-        bounds = Bounds([np.log(n_est_min), np.log(min_sam_min), np.sqrt(lr_min), np.log(max_depth_min)],
-                        [np.log(n_est_max), np.log(min_sam_max), np.sqrt(lr_max), np.log(max_depth_max)])
+        bounds = Bounds([np.log(n_est_min), np.log(min_sam_min), np.sqrt(lr_min), np.log(max_depth_min),
+                         n_est_min / lr_min],
+                        [np.log(n_est_max), np.log(min_sam_max), np.sqrt(lr_max), np.log(max_depth_max),
+                         n_est_max / lr_max])
 
         # Pre-loading initial values
         n_est0 = np.log(rand.uniform(n_est_min, n_est_max))
         min_sam0 = np.log(rand.uniform(min_sam_min, min_sam_max))
         lr0 = np.sqrt(rand.uniform(lr_min, lr_max))
         max_depth0 = np.log(rand.uniform(max_depth_min, max_depth_max))
-        initial = np.array([n_est0, min_sam0, lr0, max_depth0])
+        k0 = rand.uniform(n_est_min / lr_min, n_est_max / lr_max)
+        initial = np.array([n_est0, min_sam0, lr0, max_depth0, k0])
         print('    ---------------- Initial Parameters ---------------')
         print('    n_estimators: {:.0f}\n'
               '    min_sample_split: {:.0f}\n'
@@ -142,7 +150,8 @@ def regress_gbr(traintestset, n_splits, optimise=False):
         print('    ---------------------------------------------------')
 
         # Begin Optimisation
-        opt = minimize(fun, initial, method='trust-constr', bounds=bounds, options={'maxiter': 100})
+        opt = minimize(fun, initial, method='trust-constr', constraints={'fun': constr_fun, 'type': 'eq'},
+                       bounds=bounds, options={'maxiter': 100, 'disp': True})
         x_dict = {'n_estimators': int(np.round(np.exp(opt.x[0]), decimals=0)),
                   'min_samples_split': int(np.round(np.exp(opt.x[1]), decimals=0)),
                   'learning_rate': np.square(opt.x[2]),
@@ -157,8 +166,8 @@ def regress_gbr(traintestset, n_splits, optimise=False):
               '    min_sample_split: {:.0f}\n'
               '    learning_rate: {:.2f} \n'
               '    max_depth: {:.0f}\n'
-              '    Final CV-MSE: {:.2f}'
-              .format(np.exp(opt.x[0]), np.exp(opt.x[1]), np.square(opt.x[2]), np.exp(opt.x[3]), -opt.fun)
+              '    Final CV-RMSE: {:.2f}'
+              .format(np.exp(opt.x[0]), np.exp(opt.x[1]), np.square(opt.x[2]), np.exp(opt.x[3]), opt.fun)
               )
         print('    ---------------------------------------------------')
         print('    ------------ Completion of Optimisation -----------')
@@ -176,11 +185,14 @@ def regress_plot(teststat, trainstat=None, optstat=None):
     y_hat_test = y_hat_test.ravel()
 
     # Model Statistics
+    msre_test = np.square(100 * (y_hat_test - y_test) / y_test).mean()
+    rmsre_test = np.sqrt(msre_test)
+    print('The testing RMSRE is {:.2f}%'.format(rmsre_test))
     test_residue = y_hat_test - y_test
 
     # res histogram
     fig7, ax7 = plt.subplots()
-    ax7.hist(test_residue)
+    ax7.hist(test_residue, color='C0')
 
     # residue plot
     fig1, ax1 = plt.subplots()
@@ -217,7 +229,7 @@ def regress_plot(teststat, trainstat=None, optstat=None):
 
         ad(y_train, y_hat_train, y_test, y_hat_test, x_train, x_test, 'yes')
 
-        ax7.hist(train_residue, alpha=0.7)
+        ax7.hist(train_residue, color='C1', alpha=0.7)
 
         ax1.scatter(y_train, train_residue, alpha=0.7, c='C1', label='Train Set')
         ax1.legend()
@@ -239,7 +251,7 @@ def regress_plot(teststat, trainstat=None, optstat=None):
         ax3.legend()
 
     print('------------------Plots Generated------------------')
-    plt.show()
+    # plt.show()
 
 
 def add_error(optpls, data, scaleddata, traindata=None):
@@ -257,7 +269,7 @@ def add_error(optpls, data, scaleddata, traindata=None):
         # calculation of mre
         x_train, y_train, y_hat_train = traindata
         msre = np.square(100 * (y_hat_train - y_train) / y_train).mean()
-        rmsre = np.sqrt(np.mean(msre))
+        rmsre = np.sqrt(msre)
         print('The training RMSRE is {:.2f}%'.format(rmsre))
         return data, rmsre
     else:

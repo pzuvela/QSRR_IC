@@ -18,7 +18,7 @@ def traintest(modeldata, limxc, limdelc, n_splits, max_component):
     clf, clf_optstats = classify(labelset, n_splits, optimise=False)
     classify_stats(clf_optstats)
     labeltestset = labelset[1], labelset[3]
-    classify_plot(clf, labeltestset)
+    # classify_plot(clf, labeltestset)
     print('############ End of Sequest Modelling ############')
     print('')
 
@@ -27,7 +27,7 @@ def traintest(modeldata, limxc, limdelc, n_splits, max_component):
     # reg, reg_traindata, reg_testdata, reg_optstats = regress_pls(trset, n_splits, max_component, optimise=True)
     reg, reg_traindata, reg_testdata, reg_optstats = regress_gbr(trset, n_splits, optimise=False)
     df2, mre = add_error(reg, df, scaled_data, reg_traindata)
-    regress_plot(reg_testdata, reg_traindata, reg_optstats)
+    # regress_plot(reg_testdata, reg_traindata, reg_optstats)
     print('############# End of QSRR Modelling ##############')
     print('')
 
@@ -42,7 +42,7 @@ def traintest(modeldata, limxc, limdelc, n_splits, max_component):
     clf2, clf_optstats2 = classify(labelset2, n_splits)
     classify_stats(clf_optstats2)
     labeltestset2 = labelset2[1], labelset2[3]
-    classify_plot(clf2, labeltestset2)
+    # classify_plot(clf2, labeltestset2)
     print('######### End of Sequest + QSRR Modelling #########')
     print('')
 
@@ -85,14 +85,14 @@ def validate(validationdata, models, limxc, limdelc):
     print('############### Sequest Modelling ################')
     y_hat_clf1 = clf.predict(x_data_clf)
     classify_stats([y_data_clf, y_hat_clf1])
-    classify_plot(clf, [x_data_clf, y_data_clf])
+    # classify_plot(clf, [x_data_clf, y_data_clf])
     print('############ End of Sequest Modelling ############')
     print('')
 
     print('################## QSRR Modelling ################')
     y_hat_reg = reg.predict(x_data_reg)
     df_valid2 = add_error(reg, df_valid, [x_data, y_data])
-    regress_plot([x_data_reg, y_data_reg, y_hat_reg], reg_traindata)
+    # regress_plot([x_data_reg, y_data_reg, y_hat_reg], reg_traindata)
     print('############# End of QSRR Modelling ##############')
     print('')
 
@@ -113,7 +113,7 @@ def validate(validationdata, models, limxc, limdelc):
     print('############ Sequest + QSRR Modelling ############')
     y_hat_clf2 = clf2.predict(x_data_clf2)
     classify_stats([y_data_clf2, y_hat_clf2])
-    classify_plot(clf2, [x_data_clf2, y_data_clf2])
+    # classify_plot(clf2, [x_data_clf2, y_data_clf2])
     print('######### End of Sequest + QSRR Modelling #########')
     print('')
 

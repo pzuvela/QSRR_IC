@@ -153,7 +153,7 @@ def classify_plot(clf, testset):
     ax5.set_ylabel('Prediction Probability')
     ax5.plot(lim1, lim2, c='k')
 
-    plt.show()
+    # plt.show()
 
 
 def classify_stats(stats):
