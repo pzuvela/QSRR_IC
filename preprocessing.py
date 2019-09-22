@@ -29,18 +29,17 @@ def labelling(data, lim_xc, lim_delc, mre=None, method='xc'):
             return 0
 
     if method == 'xc':
-        data['labels'] = data.apply(lambda x: lambda1(x['Charge'], x['XC']), axis=1)
+        data.loc[:, 'labels'] = data.apply(lambda x: lambda1(x['Charge'], x['XC']), axis=1)
 
     elif method == 'delc':
-        data['labels'] = data.apply(lambda x: lambda2(x['Charge'], x['XC'], x['Delta Cn']), axis=1)
+        data.loc[:, 'labels'] = data.apply(lambda x: lambda2(x['Charge'], x['XC'], x['Delta Cn']), axis=1)
 
     elif method == 'mre' and mre is not None:
-        data['labels'] = data.apply(lambda x: lambda3(x['Charge'], x['XC'], x['Delta Cn'], x['error'], mre), axis=1)
+        data.loc[:, 'labels'] = data.apply(lambda x: lambda3(x['Charge'], x['XC'], x['Delta Cn'], x['error'], mre), axis=1)
     else:
         print("Unrecognised Method: Choose from 'xc', 'delc' or 'mre'")
 
     return data
-
 
 def splitting(data, type):
     if type == 'Sequest':
@@ -95,7 +94,7 @@ def splitting(data, type):
     # [[scaled data], [for classify], [for regress], scaler and tr_max for validation]
 
 
-def feature_selection(df, trainstat, tr=True, ad=False):
+def data_restrict(df, trainstat, tr=True, ad=False):
     # NOTE THAT ALL DATA SHOULD BE SCALED PRIOR TO SUBMISSION TO THIS FUNCTION
     tr_max, reg_traindata = trainstat
     x_train, y_train, y_hat_train = reg_traindata

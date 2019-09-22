@@ -48,12 +48,12 @@ def ad(y1, y1_hat, y2, y2_hat, x1, x2, graph):
     k = np.size(x1, axis=1) + 1
     hat_star = 3 * (k / len(h1))
 
-    print('## Leverage & standardized residuals computed...')
-    print('## Critical leverage value is: ' + str("%.3f" % hat_star))
+    # print('## Leverage & standardized residuals computed...')
+    # print('## Critical leverage value is: ' + str("%.3f" % hat_star))
 
     # Plotting Williams plot
     if graph == 'yes':
-        print('## Constructing Williams plot...')
+        # print('## Constructing Williams plot...')
         # Warning limit for std residuals
         sigma = 3
         fig, ad_plot = plt.subplots()
@@ -68,8 +68,9 @@ def ad(y1, y1_hat, y2, y2_hat, x1, x2, graph):
         ad_plot.legend()
 
     elif graph == 'no':
-        print('\n')
-        print('## Not constructing Williams plot...')
+        pass
+        # print('\n')
+        # print('## Not constructing Williams plot...')
     return hat, res_scaled, hat_star
 
 

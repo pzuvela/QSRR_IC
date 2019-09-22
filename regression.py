@@ -14,7 +14,7 @@ from petar.ad import ad
 # splitting(df)[1] should be x_train ...
 
 
-def regress_pls(traintestset, n_splits, imax, optimise=False):
+def regress_pls(traintestset, n_splits, imax, optimise=False, text=False):
     x_train, x_test, y_train, y_test = traintestset
     x_train = x_train.values
 
@@ -84,7 +84,8 @@ def regress_pls(traintestset, n_splits, imax, optimise=False):
         optstats = None
         lvs = 5
 
-    print('The number of nLVs used is {}'.format(lvs))
+    if text is True:
+        print('The number of nLVs used is {}'.format(lvs))
     pls = PLSRegression(n_components=lvs)
     pls.fit(x_train, y_train)
     y_hat_test = pls.predict(x_test)
@@ -191,14 +192,39 @@ def regress_gbr(traintestset, n_splits, optimise=False):
     return gbr, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test], None
 
 
+def regress_stats(traindata, testdata, text=False):
+    if traindata is not None:
+        x_train, y_train, y_hat_train = traindata
+        msre_train = np.square(100 * (y_hat_train - y_train) / y_train).mean()
+        rmsre_train = np.sqrt(msre_train)
+
+        x_test, y_test, y_hat_test = testdata
+        msre_test = np.square(100 * (y_hat_test - y_test) / y_test).mean()
+        rmsre_test = np.sqrt(msre_test)
+        # Printing metrics
+        if text is True:
+            print('------------- Regression Model Stats --------------')
+            print('The training RMSRE is {:.2f}%'.format(rmsre_train))
+            print('The testing RMSRE is {:.2f}%'.format(rmsre_test))
+            print('--------------- End of Statistics -----------------')
+        return rmsre_train, rmsre_test
+    else:
+        x_test, y_test, y_hat_test = testdata
+        msre_test = np.square(100 * (y_hat_test - y_test) / y_test).mean()
+        rmsre_test = np.sqrt(msre_test)
+
+        # Printing metrics
+        if text is True:
+            print('------------- Regression Model Stats --------------')
+            print('The testing RMSRE is {:.2f}%'.format(rmsre_test))
+            print('--------------- End of Statistics -----------------')
+        return rmsre_test
+
+
 def regress_plot(teststat, trainstat=None, optstat=None):
     x_test, y_test, y_hat_test = teststat
     y_hat_test = y_hat_test.ravel()
 
-    # Model Statistics
-    msre_test = np.square(100 * (y_hat_test - y_test) / y_test).mean()
-    rmsre_test = np.sqrt(msre_test)
-    print('The testing RMSRE is {:.2f}%'.format(rmsre_test))
     test_residue = y_hat_test - y_test
 
     # res histogram
@@ -261,27 +287,25 @@ def regress_plot(teststat, trainstat=None, optstat=None):
         ax3.set_title('Optimisation of LVs')
         ax3.legend()
 
-    print('------------------Plots Generated------------------')
-    plt.show()
 
-
-def add_error(optpls, data, scaleddata, traindata=None):
+def add_error(reg, data, scaleddata, traindata=None, text=False):
     # addition of error into data
     x_data_reg = scaleddata[0][['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
                                 'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
     y_data = scaleddata[1]['tR / min'].values
-    y_hat_all = optpls.predict(x_data_reg)
+    y_hat_all = reg.predict(x_data_reg)
 
     re = 100 * np.abs((y_hat_all.ravel() - y_data) / y_data)
 
-    data['error'] = re.ravel()
+    data.loc[:, 'error'] = re.ravel()
 
     if traindata is not None:
         # calculation of mre
         x_train, y_train, y_hat_train = traindata
         msre = np.square(100 * (y_hat_train - y_train) / y_train).mean()
         rmsre = np.sqrt(msre)
-        print('The training RMSRE is {:.2f}%'.format(rmsre))
+        if text is True:
+            print('The training RMSRE is {:.2f}%'.format(rmsre))
         return data, rmsre
     else:
         return data

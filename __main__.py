@@ -6,8 +6,9 @@ from matplotlib import pyplot as plt
 from sklearn.model_selection import train_test_split
 from scipy.stats import norm
 import numpy as np
+import time
 
-print('Initiating Input Data and Selected parameters...', end=' ')
+start_time = time.time()
 modeldata = pd.read_csv(os.getcwd() + '/data/model_protein.csv')
 # modeldata = pd.read_csv(os.getcwd() + '/data/Bacillus_subtilis_deltaPrpE.csv')
 
@@ -23,27 +24,22 @@ limxc = [1.9, 2.2, 3.75]
 limdelc = 0.08
 n_splits = 3
 max_component = 11
-print('Initiated')
-print('')
 
 models_final_train = list()
 models_final_valid = list()
 
-max_iter = 1
+max_iter = 2
 
 for i in range(max_iter):
     # warnings.simplefilter('ignore')
-    print('## Iteration #: ', i)
-    models_final_train.append(traintest(modeldata, limxc, limdelc, n_splits, max_component))
-    validate(validationdata, models_final_train[i], limxc, limdelc)
+    iternum = i + 1
+    print('Commencing Iteration {}'.format(iternum))
+    models_final_train.append(traintest(modeldata, limxc, limdelc, n_splits, max_component, text=True))
+    validate(validationdata, models_final_train[i], limxc, limdelc, text=True)
+    if iternum % 10 == 0:
+        elapsed_time = time.time() - start_time
+        print('Iteration #{} completed in {}'.format(iternum, time.strftime("%H:%M:%S", time.gmtime(elapsed_time))))
 
 mre_final = [models_final_train[i][5] for i in range(max_iter)]
 plt.hist(mre_final, bins=20, density=True)
 xmin, xmax = plt.xlim()
-
-# np.mean(mre_final), np.std(mre_final)
-
-# mean_mre, std_mre = norm.fit(mre_final)
-# p = norm.pdf(np.linspace(xmin, xmax, 100), mean_mre, std_mre)
-# plt.plot(np.linspace(xmin, xmax, 100), p)
-# plt.show()
