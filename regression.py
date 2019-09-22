@@ -299,16 +299,7 @@ def add_error(reg, data, scaleddata, traindata=None, text=False):
 
     data.loc[:, 'error'] = re.ravel()
 
-    if traindata is not None:
-        # calculation of mre
-        x_train, y_train, y_hat_train = traindata
-        msre = np.square(100 * (y_hat_train - y_train) / y_train).mean()
-        rmsre = np.sqrt(msre)
-        if text is True:
-            print('The training RMSRE is {:.2f}%'.format(rmsre))
-        return data, rmsre
-    else:
-        return data
+    return data
 
 
 def knee(nlvs, rmsecv):

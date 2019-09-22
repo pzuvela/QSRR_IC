@@ -1,5 +1,6 @@
 # Importing packages
 import pandas as pd
+from func import get_mre
 from preprocessing import labelling, splitting, data_restrict
 from classification import classify, classify_stats, classify_plot
 from regression import regress_pls, regress_plot, add_error, regress_gbr, regress_stats
@@ -17,6 +18,7 @@ def traintest(modeldata, limxc, limdelc, n_splits, max_component, text=False):
     if text is True:
         print('############### Sequest Modelling ################')
     clf, clf_traindata, clf_testdata, clf_optdata = classify(labelset, n_splits, optimise=False)
+
     classify_stats(clf_traindata, clf_testdata, text=text)
     classify_plot(clf_testdata, clf_optdata)
     if text is True:
@@ -27,8 +29,10 @@ def traintest(modeldata, limxc, limdelc, n_splits, max_component, text=False):
         print('################## QSRR Modelling ################')
     reg, reg_traindata, reg_testdata, reg_optdata = regress_pls(trset, n_splits, max_component)
     # reg, reg_traindata, reg_testdata, reg_optdata = regress_gbr(trset, n_splits, optimise=False)
-    df2, mre = add_error(reg, df, scaled_data, reg_traindata)
-    regress_stats(reg_traindata, reg_testdata, text=text)
+
+    df2 = add_error(reg, df, scaled_data)
+    mre = get_mre(reg_testdata[1], reg_testdata[2])
+    rmsre_train, rmsre_test = regress_stats(reg_traindata, reg_testdata, text=text)
     regress_plot(reg_testdata, reg_traindata, reg_optdata)
     if text is True:
         print('############# End of QSRR Modelling ##############\n\n')
@@ -100,7 +104,7 @@ def validate(validationdata, models, limxc, limdelc, text=False):
     y_hat_reg = reg.predict(x_data_reg).ravel()
     df_valid2 = add_error(reg, df_valid, [x_data, y_data])
 
-    regress_stats(None, [x_data_reg, y_data_reg, y_hat_reg],text=text)
+    regress_stats(None, [x_data_reg, y_data_reg, y_hat_reg], text=text)
     regress_plot([x_data_reg, y_data_reg, y_hat_reg], reg_traindata)
     if text is True:
         print('############# End of QSRR Modelling ##############\n\n')
@@ -131,4 +135,3 @@ def validate(validationdata, models, limxc, limdelc, text=False):
 
     if text is True:
         print('####### Completion of Validation Procedure ########\n\n\n')
-

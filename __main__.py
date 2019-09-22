@@ -28,7 +28,7 @@ max_component = 11
 models_final_train = list()
 models_final_valid = list()
 
-max_iter = 2
+max_iter = 1
 
 for i in range(max_iter):
     # warnings.simplefilter('ignore')
