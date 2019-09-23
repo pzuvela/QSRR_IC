@@ -7,11 +7,8 @@ from sklearn.model_selection import KFold, cross_val_score
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.metrics import mean_squared_error, make_scorer
+from func import knee
 from petar.ad import ad
-
-
-# input from preprocessing
-# splitting(df)[1] should be x_train ...
 
 
 def regress_pls(traintestset, n_splits, imax, optimise=False, text=False):
@@ -229,11 +226,11 @@ def regress_plot(teststat, trainstat=None, optstat=None):
 
     # res histogram
     fig7, ax7 = plt.subplots()
-    ax7.hist(test_residue, color='C0', density=True)
+    ax7.hist(test_residue, color='C1', density=True, label='Test Set')
 
     # residue plot
     fig1, ax1 = plt.subplots()
-    ax1.scatter(y_test, test_residue, c='C0', label='Test Set')
+    ax1.scatter(y_test, test_residue, c='C1', label='Test Set')
     lim1 = [np.min(ax1.get_xlim()), np.max(ax1.get_xlim())]
     lim2 = [0, 0]
     ax1.plot(lim1, lim2, c='k')
@@ -245,7 +242,7 @@ def regress_plot(teststat, trainstat=None, optstat=None):
 
     # response plot
     fig2, ax2 = plt.subplots()
-    ax2.scatter(y_test, y_hat_test, c='C0', label='Test Set')
+    ax2.scatter(y_test, y_hat_test, c='C1', label='Test Set')
     lims = [
         np.min([ax2.get_xlim(), ax2.get_ylim()]),  # min of both axes
         np.max([ax2.get_xlim(), ax2.get_ylim()])  # max of both axes
@@ -266,12 +263,12 @@ def regress_plot(teststat, trainstat=None, optstat=None):
 
         ad(y_train, y_hat_train, y_test, y_hat_test, x_train, x_test, 'yes')
 
-        ax7.hist(train_residue, color='C1', alpha=0.7, density=True)
+        ax7.hist(train_residue, color='C0', alpha=0.7, density=True, label='Train Set')
 
-        ax1.scatter(y_train, train_residue, alpha=0.7, c='C1', label='Train Set')
+        ax1.scatter(y_train, train_residue, alpha=0.7, c='C0', label='Train Set')
         ax1.legend()
 
-        ax2.scatter(y_train, y_hat_train, alpha=0.7, c='C1', label='Train Set')
+        ax2.scatter(y_train, y_hat_train, alpha=0.7, c='C0', label='Train Set')
         ax2.legend()
 
     if optstat is not None:
@@ -286,31 +283,3 @@ def regress_plot(teststat, trainstat=None, optstat=None):
         ax3.set_ylabel('Error')
         ax3.set_title('Optimisation of LVs')
         ax3.legend()
-
-
-def add_error(reg, data, scaleddata, traindata=None, text=False):
-    # addition of error into data
-    x_data_reg = scaleddata[0][['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
-                                'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
-    y_data = scaleddata[1]['tR / min'].values
-    y_hat_all = reg.predict(x_data_reg)
-
-    re = 100 * np.abs((y_hat_all.ravel() - y_data) / y_data)
-
-    data.loc[:, 'error'] = re.ravel()
-
-    return data
-
-
-def knee(nlvs, rmsecv):
-    del1, del2 = [], []
-    for i in range(0, len(nlvs)-1):
-        del1.append(rmsecv[i+1] - rmsecv[i])
-
-    for j in range(0, len(del1)-1):
-        del2.append(del1[j+1] - del1[j])
-
-    max_del2 = np.argmax(del2)
-    kneept = nlvs[max_del2 + 2]
-    return int(kneept)
-

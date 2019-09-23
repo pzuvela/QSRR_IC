@@ -7,21 +7,21 @@ from petar.ad import hat_matrix
 
 # labels generation
 def labelling(data, lim_xc, lim_delc, mre=None, method='xc'):
-    def lambda1(charge, xc):
+    def xc(charge, xc):
         if (charge == 1 and xc >= lim_xc[0]) or (charge == 2 and xc >= lim_xc[1]) \
                 or (charge >= 3 and xc >= lim_xc[2]):
             return 1
         else:
             return 0
 
-    def lambda2(charge, xc, delc):
+    def delc(charge, xc, delc):
         if ((charge == 1 and xc >= lim_xc[0]) or (charge == 2 and xc >= lim_xc[1])
                 or (charge >= 3 and xc >= lim_xc[2])) and delc >= lim_delc:
             return 1
         else:
             return 0
 
-    def lambda3(charge, xc, delc, error, mean_error):
+    def error(charge, xc, delc, error, mean_error):
         if ((charge == 1 and xc >= lim_xc[0]) or (charge == 2 and xc >= lim_xc[1])
                 or (charge >= 3 and xc >= lim_xc[2])) and delc >= lim_delc and error < mean_error:
             return 1
@@ -29,13 +29,15 @@ def labelling(data, lim_xc, lim_delc, mre=None, method='xc'):
             return 0
 
     if method == 'xc':
-        data.loc[:, 'labels'] = data.apply(lambda x: lambda1(x['Charge'], x['XC']), axis=1)
+        data = data.assign({'labels': lambda x: xc(x['Charge'], x['XC'])})
+        # data.loc[:, 'labels'] = data.apply(lambda x: xc(x['Charge'], x['XC']), axis=1)
 
     elif method == 'delc':
-        data.loc[:, 'labels'] = data.apply(lambda x: lambda2(x['Charge'], x['XC'], x['Delta Cn']), axis=1)
+        data = data.assign(labels=lambda x: delc(x['Charge'], x['XC'], x['Delta Cn']))
+        data.loc[:, 'labels'] = data.apply(lambda x: delc(x['Charge'], x['XC'], x['Delta Cn']), axis=1)
 
     elif method == 'mre' and mre is not None:
-        data.loc[:, 'labels'] = data.apply(lambda x: lambda3(x['Charge'], x['XC'], x['Delta Cn'], x['error'], mre)
+        data.loc[:, 'labels'] = data.apply(lambda x: error(x['Charge'], x['XC'], x['Delta Cn'], x['error'], mre)
                                            , axis=1)
     else:
         print("Unrecognised Method: Choose from 'xc', 'delc' or 'mre'")

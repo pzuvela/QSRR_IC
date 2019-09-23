@@ -56,8 +56,8 @@ def ad(y1, y1_hat, y2, y2_hat, x1, x2, graph):
         # Warning limit for std residuals
         sigma = 3
         fig, ad_plot = plt.subplots()
-        plt.scatter(h1, r1, c='C1', label='Training set')
-        plt.scatter(h2, r2, c='C0', label='Testing set')
+        plt.scatter(h1, r1, c='C0', label='Training set')
+        plt.scatter(h2, r2, c='C1', label='Testing set')
         plt.axhline(y=sigma, xmin=0, xmax=1, color='red', linestyle='dashed')
         plt.axhline(y=-sigma, xmin=0, xmax=1, color='red', linestyle='dashed')
         plt.axvline(x=hat_star, ymin=-sigma, ymax=sigma, color='red', linestyle='dashed')

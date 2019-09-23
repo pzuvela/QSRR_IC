@@ -3,10 +3,11 @@ import pandas as pd
 from func import get_mre
 from preprocessing import labelling, splitting, data_restrict
 from classification import classify, classify_stats, classify_plot
-from regression import regress_pls, regress_plot, add_error, regress_gbr, regress_stats
+from regression import regress_pls, regress_plot, regress_gbr, regress_stats
+from func import add_error
 
 
-def traintest(modeldata, limxc, limdelc, n_splits, max_component, text=False):
+def traintest(modeldata, limxc, limdelc, n_splits, max_component, text=False, plot=False):
     if text is True:
         print('### Commencing Training and Testing Procedure ####\n\n')
 
@@ -19,21 +20,23 @@ def traintest(modeldata, limxc, limdelc, n_splits, max_component, text=False):
         print('############### Sequest Modelling ################')
     clf, clf_traindata, clf_testdata, clf_optdata = classify(labelset, n_splits, optimise=False)
 
-    classify_stats(clf_traindata, clf_testdata, text=text)
-    classify_plot(clf_testdata, clf_optdata)
+    acc1, sens1, spec1, mcc1 = classify_stats(clf_traindata, clf_testdata, text=text)
+    if plot is True:
+        classify_plot(clf_testdata, clf_optdata)
     if text is True:
         print('############ End of Sequest Modelling ############\n')
 
-    # regression model
+    # regression model (currently choice between pls/gbr)
     if text is True:
         print('################## QSRR Modelling ################')
-    reg, reg_traindata, reg_testdata, reg_optdata = regress_pls(trset, n_splits, max_component)
-    # reg, reg_traindata, reg_testdata, reg_optdata = regress_gbr(trset, n_splits, optimise=False)
+    # reg, reg_traindata, reg_testdata, reg_optdata = regress_pls(trset, n_splits, max_component)
+    reg, reg_traindata, reg_testdata, reg_optdata = regress_gbr(trset, n_splits, optimise=False)
 
     df2 = add_error(reg, df, scaled_data)
     mre = get_mre(reg_testdata[1], reg_testdata[2])
     rmsre_train, rmsre_test = regress_stats(reg_traindata, reg_testdata, text=text)
-    regress_plot(reg_testdata, reg_traindata, reg_optdata)
+    if plot is True:
+        regress_plot(reg_testdata, reg_traindata, reg_optdata)
     if text is True:
         print('############# End of QSRR Modelling ##############\n\n')
 
@@ -47,18 +50,23 @@ def traintest(modeldata, limxc, limdelc, n_splits, max_component, text=False):
 
     # classification with new labels
     clf2, clf_traindata2, clf_testdata2, clf_optdata2 = classify(labelset2, n_splits)
-    classify_stats(clf_traindata2, clf_testdata2, text=text)
-    classify_plot(clf_testdata2, clf_optdata2)
+    acc2, sens2, spec2, mcc2 = classify_stats(clf_traindata2, clf_testdata2, text=text)
+    if plot is True:
+        classify_plot(clf_testdata2, clf_optdata2)
     if text is True:
         print('######### End of Sequest + QSRR Modelling #########\n\n')
 
     if text is True:
         print('## Completion of Training and Testing Procedure ##\n\n\n')
 
-    return sc, sc2, clf, clf2, reg, mre, tr_max, reg_traindata
+    # collating model for validation
+    modeldata = (sc, sc2, clf, clf2, reg, mre, tr_max, reg_traindata)
+    stats = (acc1, sens1, spec1, mcc1, rmsre_train, rmsre_test, acc2, sens2, spec2, mcc2)
+
+    return modeldata, stats
 
 
-def validate(validationdata, models, limxc, limdelc, text=False):
+def validate(validationdata, models, limxc, limdelc, text=False, plot=False):
     if text is True:
         print('######## Commencing Validation Procedure #########\n\n')
 
@@ -74,13 +82,16 @@ def validate(validationdata, models, limxc, limdelc, text=False):
     # Scaling
     x_data = pd.DataFrame(sc.transform(x_data), columns=x_data.columns)
 
+    '''
     # Restricting validation set
     if text is True:
         print('Initial shape of validation Set : {}'.format(df_valid.shape))
+
     df_valid, x_data, y_data = data_restrict([df_valid, x_data, y_data], [tr_max, reg_traindata], ad=False)
+
     if text is True:
         print('Final shape of validation Set : {}'.format(df_valid.shape))
-
+    '''
     # Splitting x and y data for clf and reg models
     x_data_clf = x_data[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp']]
     x_data_reg = x_data[['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
@@ -94,8 +105,9 @@ def validate(validationdata, models, limxc, limdelc, text=False):
     y_hat_clf1 = clf.predict(x_data_clf)
     y_hat_proba1 = clf.predict_proba(x_data_clf)[:, 1]
 
-    classify_stats(None, [x_data_clf, y_data_clf, y_hat_clf1], text=text)
-    classify_plot([x_data_clf, y_data_clf, y_hat_clf1], [None, y_hat_proba1])
+    acc1, sens1, spec1, mcc1 = classify_stats(None, [x_data_clf, y_data_clf, y_hat_clf1, y_hat_proba1], text=text)
+    if plot is True:
+        classify_plot([x_data_clf, y_data_clf, y_hat_clf1, y_hat_proba1], [None])
     if text is True:
         print('############ End of Sequest Modelling ############\n\n')
 
@@ -104,8 +116,9 @@ def validate(validationdata, models, limxc, limdelc, text=False):
     y_hat_reg = reg.predict(x_data_reg).ravel()
     df_valid2 = add_error(reg, df_valid, [x_data, y_data])
 
-    regress_stats(None, [x_data_reg, y_data_reg, y_hat_reg], text=text)
-    regress_plot([x_data_reg, y_data_reg, y_hat_reg], reg_traindata)
+    rmsre_test = regress_stats(None, [x_data_reg, y_data_reg, y_hat_reg], text=text)
+    if plot is True:
+        regress_plot([x_data_reg, y_data_reg, y_hat_reg], reg_traindata)
     if text is True:
         print('############# End of QSRR Modelling ##############\n\n')
 
@@ -128,10 +141,15 @@ def validate(validationdata, models, limxc, limdelc, text=False):
     y_hat_clf2 = clf2.predict(x_data_clf2)
     y_hat_proba2 = clf2.predict_proba(x_data_clf2)[:, 1]
 
-    classify_stats(None, [x_data_clf2, y_data_clf2, y_hat_clf2], text=text)
-    classify_plot([x_data_clf2, y_data_clf2, y_hat_clf2], [None, y_hat_proba2])
+    acc2, sens2, spec2, mcc2 = classify_stats(None, [x_data_clf2, y_data_clf2, y_hat_clf2, y_hat_proba2], text=text)
+    if plot is True:
+        classify_plot([x_data_clf2, y_data_clf2, y_hat_clf2, y_hat_proba2], [None])
     if text is True:
         print('######### End of Sequest + QSRR Modelling #########\n\n')
 
     if text is True:
         print('####### Completion of Validation Procedure ########\n\n\n')
+
+    validstats = (acc1, sens1, spec1, mcc1, rmsre_test, acc2, sens2, spec2, mcc2)
+
+    return validstats

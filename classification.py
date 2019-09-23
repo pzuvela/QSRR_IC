@@ -8,9 +8,6 @@ from sklearn.model_selection import GridSearchCV, KFold, cross_val_score
 from scipy.optimize import minimize, Bounds
 
 
-# input from preprocessing
-
-
 # classification
 def classify(traintestset, n_splits, optimise=False):
     x_train, x_test, y_train, y_test = traintestset
@@ -96,7 +93,7 @@ def classify(traintestset, n_splits, optimise=False):
     feature_importance = clf.feature_importances_
     y_hat_proba = clf.predict_proba(x_test)[:, 1]
 
-    return [clf, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test], [feature_importance, y_hat_proba]]
+    return [clf, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test, y_hat_proba], [feature_importance]]
 
 
 """
@@ -124,8 +121,8 @@ def classify(traintestset, n_splits, optimise=False):
 
 
 def classify_plot(testdata, optdata):
-    x_test, y_test, y_hat_test = testdata
-    feature_importance, y_hat_proba = optdata
+    x_test, y_test, y_hat_test, y_hat_testproba = testdata
+    feature_importance = optdata
 
     if feature_importance is not None:
         # Features importance in clf model
@@ -146,11 +143,11 @@ def classify_plot(testdata, optdata):
     # Probabilistic Distribution in clf model
     y_test_good_ind = (y_test == 1)
     y_test_bad_ind = ~y_test_good_ind
-    x = np.linspace(1, len(y_hat_proba) - 1, len(y_hat_proba), dtype='int')
+    x = np.linspace(1, len(y_hat_testproba) - 1, len(y_hat_testproba), dtype='int')
 
     fig5, ax5 = plt.subplots()
-    ax5.scatter(x[y_test_bad_ind], y_hat_proba[y_test_bad_ind], c='C3')
-    ax5.scatter(x[y_test_good_ind], y_hat_proba[y_test_good_ind], c='C2')
+    ax5.scatter(x[y_test_bad_ind], y_hat_testproba[y_test_bad_ind], c='C3')
+    ax5.scatter(x[y_test_good_ind], y_hat_testproba[y_test_good_ind], c='C2')
     lim1 = [np.min(ax5.get_xlim()), np.max(ax5.get_xlim())]
     lim2 = [0.5, 0.5]
     ax5.set_title('Prediction Probability Distribution')
@@ -161,7 +158,7 @@ def classify_plot(testdata, optdata):
 def classify_stats(traindata, testdata, text=False):
     if traindata is not None:
         x_train, y_train, y_hat_train = traindata
-    x_test, y_test, y_hat_test = testdata
+    x_test, y_test, y_hat_test, y_hat_testproba = testdata
 
     # clf model statistics
     cm = confusion_matrix(y_test, y_hat_test)
@@ -204,6 +201,6 @@ def add_status(gbc, data, scaleddata, name):
         elif y_data[i] == 1 and y_pred[i] == 0:
             status.append('fn')
 
-    data[label] = status
+    data.loc[:, label] = status
 
     return data
