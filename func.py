@@ -25,6 +25,7 @@ def histplot(y_data, title, x_axis):
     ax.set_xlabel(x_axis)
     ax.text(0.2, 0.9, s='Mean:{:.2f} +/- {:.2f}'.format(y_mean, 3*y_std), horizontalalignment='center',
             verticalalignment='center', transform=ax.transAxes, bbox=dict(facecolor='red', alpha=0.5))
+    return fig
 
 
 def add_error(reg, rawdata, scaleddata):
