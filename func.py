@@ -53,8 +53,12 @@ def knee(x, y):
     return int(kneept)
 
 
-def updatetable(df_tobeupdated, main_data, limxc, limdelc, models, i):
+def updatetable(main_data, limxc, limdelc, models, i):
     sc, sc2, clf, clf2, reg, mre, tr_max, reg_traindata = models
+
+    df_yproba1 = pd.DataFrame()
+    df_yhat = pd.DataFrame()
+    df_yproba2 = pd.DataFrame()
 
     df = labelling(main_data, limxc, limdelc, method='delc')
     x_data = df[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
@@ -65,7 +69,8 @@ def updatetable(df_tobeupdated, main_data, limxc, limdelc, models, i):
     x_data = pd.DataFrame(sc.transform(x_data), columns=x_data.columns)
 
     x_data_clf = x_data[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp']]
-    y_hat_proba1 = clf.predict_proba(x_data_clf)
+    y_data_clf = y_data[['labels']]
+    y_hat_proba1 = clf.predict_proba(x_data_clf)[:, 1].ravel()
 
     x_data_reg = x_data[['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
                          'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
@@ -81,11 +86,14 @@ def updatetable(df_tobeupdated, main_data, limxc, limdelc, models, i):
 
     x_data_clf2 = x_data2[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
                            'error']]
-    y_hat_proba2 = clf2.predict_proba(x_data_clf2)
+    y_data_clf = [['labels']]
+    y_hat_proba2 = clf2.predict_proba(x_data_clf2)[:, 1].ravel()
 
     col_name1 = 'iter{}_y_proba1'.format(i)
     col_name2 = 'iter{}_y_hat_reg'.format(i)
     col_name3 = 'iter{}_y_proba2'.format(i)
 
-    newdf = df_tobeupdated.assign[{col_name1: y_hat_proba1, col_name2: y_hat_reg, col_name3: y_hat_proba2}]
-    return newdf
+    df_yproba1.loc[:, col_name1] = y_hat_proba1
+    df_yhat.loc[:, col_name2] = y_hat_reg
+    df_yproba2.loc[:, col_name3] = y_hat_proba2
+    return df_yproba1, df_yhat, df_yproba2

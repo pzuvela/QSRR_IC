@@ -29,11 +29,11 @@ def labelling(data, lim_xc, lim_delc, mre=None, method='xc'):
             return 0
 
     if method == 'xc':
-        data = data.assign({'labels': lambda x: xc(x['Charge'], x['XC'])})
-        # data.loc[:, 'labels'] = data.apply(lambda x: xc(x['Charge'], x['XC']), axis=1)
+        # data = data.assign({'labels': lambda x: xc(x['Charge'], x['XC'])})
+        data.loc[:, 'labels'] = data.apply(lambda x: xc(x['Charge'], x['XC']), axis=1)
 
     elif method == 'delc':
-        data = data.assign(labels=lambda x: delc(x['Charge'], x['XC'], x['Delta Cn']))
+        # data = data.assign(labels=lambda x: delc(x['Charge'], x['XC'], x['Delta Cn']))
         data.loc[:, 'labels'] = data.apply(lambda x: delc(x['Charge'], x['XC'], x['Delta Cn']), axis=1)
 
     elif method == 'mre' and mre is not None:
