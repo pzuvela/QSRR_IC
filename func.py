@@ -70,15 +70,17 @@ def updatetable(main_data, limxc, limdelc, models, i):
     x_data = pd.DataFrame(sc.transform(x_data), columns=x_data.columns)
 
     x_data_clf = x_data[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp']]
-    y_data_clf = y_data[['labels']]
+    y_data_clf = y_data[['labels']].values.ravel()
     y_hat_proba1 = clf.predict_proba(x_data_clf)[:, 1].ravel()
 
     x_data_reg = x_data[['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
                          'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
-    y_data_reg = y_data[['tR / min']]
+    y_data_reg = y_data[['tR / min']].values.ravel()
     y_hat_reg = reg.predict(x_data_reg).ravel()
 
     df2 = add_error(reg, df, [x_data, y_data])
+    df2 = labelling(df2, limxc, limdelc, mre=mre, method='mre')
+
     x_data2 = df2[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
                    'A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
                    'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V',
@@ -88,14 +90,25 @@ def updatetable(main_data, limxc, limdelc, models, i):
 
     x_data_clf2 = x_data2[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
                            'error']]
-    y_data_clf = [['labels']]
+    y_data_clf2 = df2[['labels']].values.ravel()
     y_hat_proba2 = clf2.predict_proba(x_data_clf2)[:, 1].ravel()
 
-    col_name1 = 'iter{}_y_proba1'.format(i)
-    col_name2 = 'iter{}_y_hat_reg'.format(i)
-    col_name3 = 'iter{}_y_proba2'.format(i)
+    return [y_data_clf, y_hat_proba1], [y_data_reg, y_hat_reg], [y_data_clf2, y_hat_proba2]
 
-    df_yproba1.loc[:, col_name1] = y_hat_proba1
-    df_yhat.loc[:, col_name2] = y_hat_reg
-    df_yproba2.loc[:, col_name3] = y_hat_proba2
-    return y_proba1, y_hat_reg, y_hat_proba2
+
+def add_true_mean_std(y_true, df):
+    mean = df.mean(axis=0).ravel()
+    std = df.std(axis=0).ravel()
+    stats = [y_true, mean, std]
+    df_stats = pd.DataFrame(stats, index=['actual', 'mean', 'std'])
+    df = pd.concat([df_stats, df])
+    return df
+
+
+def add_mean_std(df):
+    mean = df.mean(axis=0).ravel()
+    std = df.std(axis=0).ravel()
+    stats = [mean, std]
+    df_stats = pd.DataFrame(stats, index=['mean', 'std'])
+    df = pd.concat([df_stats, df])
+    return df

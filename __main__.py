@@ -1,16 +1,16 @@
+import time
 import pandas as pd
 import os
 import warnings
+
 from process import traintest, validate
-from matplotlib import pyplot as plt
 from sklearn.model_selection import train_test_split
-from func import histplot, updatetable
-import time
+from func import histplot, updatetable, add_true_mean_std, add_mean_std
 from multiprocessing import Pool
 
 
 start_time = time.time()
-trainingdata = pd.read_csv(os.getcwd() + '/data/model_protein.csv')
+rawdata = pd.read_csv(os.getcwd() + '/data/model_protein.csv')
 # modeldata = pd.read_csv(os.getcwd() + '/data/Bacillus_subtilis_deltaPrpE.csv')
 
 # validationdata = pd.read_csv(os.getcwd() + '/data/HeLaK.csv')
@@ -18,11 +18,8 @@ trainingdata = pd.read_csv(os.getcwd() + '/data/model_protein.csv')
 # validationdata = pd.read_csv(os.getcwd() + '/data/Bacillus_subtilis_deltaPrpE.csv')
 
 masterStats = []
-dfstats_proba1 = pd.DataFrame()
-dfstats_yhat = pd.DataFrame()
-dfstats_proba2 = pd.DataFrame()
-max_iter = 10
-max_run = 10
+max_iter = 5
+max_run = 1
 proc_i = 4
 limxc = [1.9, 2.2, 3.75]
 limdelc = 0.08
@@ -31,7 +28,7 @@ max_component = 11
 
 
 def model_parallel(arg_iter):
-    modeldata, validationdata = train_test_split(trainingdata, test_size=0.3, shuffle=True)
+    modeldata, validationdata = train_test_split(rawdata, test_size=0.3, shuffle=True)
     modeldata = modeldata.reset_index()
     validationdata = validationdata.reset_index()
 
@@ -47,11 +44,10 @@ def model_parallel(arg_iter):
     #                                        acc, sens, spec, mcc     for sequest + qsrr
 
     metrics = stats + validstats
-    stats_proba1 = updatetable(trainingdata, limxc, limdelc, models, arg_iter)[0]
-    stats_yhat = updatetable(trainingdata, limxc, limdelc, models, arg_iter)[1]
-    stats_proba2 = updatetable(trainingdata, limxc, limdelc, models, arg_iter)[2]
+    stats_proba1 = updatetable(rawdata, limxc, limdelc, models, arg_iter)[0]
+    stats_yhat = updatetable(rawdata, limxc, limdelc, models, arg_iter)[1]
+    stats_proba2 = updatetable(rawdata, limxc, limdelc, models, arg_iter)[2]
 
-    elapsed_time = time.time() - start_time
     print('Iteration #{}/{} completed'.format(arg_iter[0] + 1, max_iter))
 
     return metrics, stats_proba1, stats_yhat, stats_proba2
@@ -70,17 +66,26 @@ if __name__ == '__main__':
         models_final = p.map(model_parallel, zip(range(max_iter)))
 
         masterStats = [models_final[i][0] for i in range(max_iter)]
-        y_proba1 = [models_final[i][1] for i in range(max_iter)]
-        y_hat_reg = [models_final[i][2] for i in range(max_iter)]
-        y_proba2 = [models_final[i][3] for i in range(max_iter)]
+
+        y_true1 = models_final[0][1][0]
+        y_proba1 = [models_final[i][1][1] for i in range(max_iter)]
+
+        y_true2 = models_final[0][2][0]
+        y_hat_reg = [models_final[i][2][1] for i in range(max_iter)]
+
+        y_true3 = [models_final[i][3][0] for i in range(max_iter)]  # label may change for this model
+        y_proba2 = [models_final[i][3][1] for i in range(max_iter)]
 
         run_time = time.time() - run_start_time
         print('Simulation Completed')
         print('Run Duration: {}\n'.format(time.strftime("%H:%M:%S", time.gmtime(run_time))))
 
         # Generating csv of metrics
-        column = ['acc_test_sequest', 'sens_test_sequest', 'spec_test_sequest', 'mcc_test_sequest',
-                  'rmse_train_qsrr', 'rmse_test_qsrr',
+        column = ['acc_train_sequest', 'sens_train_sequest', 'spec_train_sequest', 'mcc_train_sequest',
+                  'rmse_train_qsrr',
+                  'acc_train_both', 'sens_train_both', 'spec_train_both', 'mcc_train_both',
+                  'acc_test_sequest', 'sens_test_sequest', 'spec_test_sequest', 'mcc_test_sequest',
+                  'rmse_test_qsrr',
                   'acc_test_both', 'sens_test_both', 'spec_test_both', 'mcc_test_both',
                   'acc_valid_sequest', 'sens_valid_sequest', 'spec_valid_sequest', 'mcc_valid_sequest',
                   'rmse_valid_qsrr',
@@ -89,24 +94,20 @@ if __name__ == '__main__':
                                                          .format(max_iter, run_num), header=True)
 
         # Generating predictions
-        pd.DataFrame(y_proba1).to_csv('results/sequest_predictedprobability1_{}iters_run{}.csv'
-                                      .format(max_iter, run_num), header=True)
-        pd.DataFrame(y_hat_reg).to_csv('results/qsrr_trprediction_{}iters_run{}.csv'
-                                       .format(max_iter, run_num), header=True)
-        pd.DataFrame(y_proba2).to_csv('results/both_predictedprobability2_{}iters_run{}.csv'
-                                      .format(max_iter, run_num), header=True)
+        df_yproba1 = pd.DataFrame(y_proba1)
+        add_true_mean_std(y_true1, df_yproba1).to_csv('results/sequest_predictedprobability1_{}iters_run{}.csv'
+                                                      .format(max_iter, run_num), header=True)
+
+        df_y_hat_reg = pd.DataFrame(y_hat_reg)
+        add_true_mean_std(y_true2, df_y_hat_reg).to_csv('results/qsrr_trprediction_{}iters_run{}.csv'
+                                                        .format(max_iter, run_num), header=True)
+
+        df_yproba2 = pd.DataFrame(y_proba2)
+        add_mean_std(df_yproba2).to_csv('results/both_predictedprobability2_{}iters_run{}.csv'
+                                        .format(max_iter, run_num), header=True)
 
         # plotting out selected metrics
-        valid_mcc1 = [masterStats[i][13] for i in range(max_iter)]
-        valid_rmsre = [masterStats[i][14] for i in range(max_iter)]
-        valid_mcc2 = [masterStats[i][18] for i in range(max_iter)]
-
-        histplot(valid_mcc1, 'Valid MCC of Sequest', "Matthew's CC").savefig(
-            'figures/ValidMCC_Seq_{}iters_run{}'.format(max_iter, run_num))
-        histplot(valid_rmsre, 'Valid Testing RMSRE', 'RMSRE / %').savefig(
-            'figures/ValidRMSRE_QSRR_{}iters_run{}'.format(max_iter, run_num))
-        histplot(valid_mcc2, 'Valid MCC of Sequest + QSRR', "Matthew's CC").savefig(
-            'figures/ValidMCC_Seq_QSRR_{}iters_run{}'.format(max_iter, run_num))
+        # utilise savefig for plotting purpose
 
     total_time = time.time() - start_time
     print('\nTotal Duration: {}'.format(time.strftime("%H:%M:%S", time.gmtime(total_time))))

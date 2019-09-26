@@ -156,31 +156,48 @@ def classify_plot(testdata, optdata):
 
 
 def classify_stats(traindata, testdata, text=False):
-    if traindata is not None:
+    if traindata is None:
+        x_test, y_test, y_hat_test, y_hat_testproba = testdata
+
+        # clf model statistics
+        cm = confusion_matrix(y_test, y_hat_test)
+        table = pd.DataFrame(cm, columns=['pred_neg', 'pred_pos'], index=['neg', 'pos'])
+        tn, fp, fn, tp = cm.ravel()
+        acc_test = (tp + tn) / (tn + fp + fn + tp)
+        sens_test = tp / (tp + fn)  # also known as recall
+        spec_test = tn / (tn + fp)
+        mcc_test = ((tp * tn) - (fp * fn)) / ((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)) ** 0.5
+
+        # plotting Metrics stats
+        if text is True:
+            print('----------- Classification Model Stats ------------')
+            print(table)
+            print('Accuracy: {:.2f}\n'
+                  'Sensitivity: {:.2f}\n'
+                  'Specificity: {:.2f}\n'
+                  'Matthews CC: {:.2f}'.format(acc, sens, spec, mcc))
+            print('--------------- End of Statistics -----------------')
+
+        return acc_test, sens_test, spec_test, mcc_test
+    else:
+        x_test, y_test, y_hat_test, y_hat_testproba = testdata
+
+        cm_test = confusion_matrix(y_test, y_hat_test)
+        tn, fp, fn, tp = cm_test.ravel()
+        acc_test = (tp + tn) / (tn + fp + fn + tp)
+        sens_test = tp / (tp + fn)  # also known as recall
+        spec_test = tn / (tn + fp)
+        mcc_test = ((tp * tn) - (fp * fn)) / ((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)) ** 0.5
+
         x_train, y_train, y_hat_train = traindata
-    x_test, y_test, y_hat_test, y_hat_testproba = testdata
+        cm_train = confusion_matrix(y_train, y_hat_train)
+        tn, fp, fn, tp = cm_train.ravel()
+        acc_train = (tp + tn) / (tn + fp + fn + tp)
+        sens_train = tp / (tp + fn)  # also known as recall
+        spec_train = tn / (tn + fp)
+        mcc_train = ((tp * tn) - (fp * fn)) / ((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)) ** 0.5
 
-    # clf model statistics
-    cm = confusion_matrix(y_test, y_hat_test)
-    table = pd.DataFrame(cm, columns=['pred_neg', 'pred_pos'], index=['neg', 'pos'])
-    tn, fp, fn, tp = cm.ravel()
-    acc = (tp + tn) / (tn + fp + fn + tp)
-    sens = tp / (tp + fn)  # also known as recall
-    prec = tp / (tp + fp)
-    spec = tn / (tn + fp)
-    mcc = ((tp * tn) - (fp * fn)) / ((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)) ** 0.5
-
-    # plotting Metrics stats
-    if text is True:
-        print('----------- Classification Model Stats ------------')
-        print(table)
-        print('Accuracy: {:.2f}\n'
-              'Sensitivity: {:.2f}\n'
-              'Specificity: {:.2f}\n'
-              'Matthews CC: {:.2f}'.format(acc, sens, spec, mcc))
-        print('--------------- End of Statistics -----------------')
-
-    return acc, sens, spec, mcc
+        return acc_train, sens_train, spec_train, mcc_train, acc_test, sens_test, spec_test, mcc_test
 
 
 def add_status(gbc, data, scaleddata, name):

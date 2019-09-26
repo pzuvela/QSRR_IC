@@ -20,7 +20,8 @@ def traintest(modeldata, limxc, limdelc, n_splits, max_component, text=False, pl
         print('############### Sequest Modelling ################')
     clf, clf_traindata, clf_testdata, clf_optdata = classify(labelset, n_splits, optimise=False)
 
-    acc1, sens1, spec1, mcc1 = classify_stats(clf_traindata, clf_testdata, text=text)
+    acc_train1, sens_train1, spec_train1, mcc_train1, acc_test1, sens_test1, spec_test1, mcc_test1 \
+        = classify_stats(clf_traindata, clf_testdata, text=text)
     if plot is True:
         classify_plot(clf_testdata, clf_optdata)
     if text is True:
@@ -50,7 +51,8 @@ def traintest(modeldata, limxc, limdelc, n_splits, max_component, text=False, pl
 
     # classification with new labels
     clf2, clf_traindata2, clf_testdata2, clf_optdata2 = classify(labelset2, n_splits)
-    acc2, sens2, spec2, mcc2 = classify_stats(clf_traindata2, clf_testdata2, text=text)
+    acc_train2, sens_train2, spec_train2, mcc_train2, acc_test2, sens_test2, spec_test2, mcc_test2 \
+        = classify_stats(clf_traindata2, clf_testdata2, text=text)
     if plot is True:
         classify_plot(clf_testdata2, clf_optdata2)
     if text is True:
@@ -61,7 +63,12 @@ def traintest(modeldata, limxc, limdelc, n_splits, max_component, text=False, pl
 
     # collating model for validation
     modeldata = (sc, sc2, clf, clf2, reg, mre, tr_max, reg_traindata)
-    stats = (acc1, sens1, spec1, mcc1, rmsre_train, rmsre_test, acc2, sens2, spec2, mcc2)
+    stats = (acc_train1, sens_train1, spec_train1, mcc_train1,
+             rmsre_train,
+             acc_train2, sens_train2, spec_train2, mcc_train2,
+             acc_test1, sens_test1, spec_test1, mcc_test1,
+             rmsre_test,
+             acc_test2, sens_test2, spec_test2, mcc_test2)
 
     return modeldata, stats
 
