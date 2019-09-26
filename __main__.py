@@ -70,29 +70,31 @@ if __name__ == '__main__':
         models_final = p.map(model_parallel, zip(range(max_iter)))
 
         masterStats = [models_final[i][0] for i in range(max_iter)]
-        dfstats_proba1 = pd.concat([models_final[i][1] for i in range(max_iter)], axis=1)
-        dfstats_yhat = pd.concat([models_final[i][2] for i in range(max_iter)], axis=1)
-        dfstats_proba2 = pd.concat([models_final[i][3] for i in range(max_iter)], axis=1)
+        y_proba1 = [models_final[i][1] for i in range(max_iter)]
+        y_hat_reg = [models_final[i][2] for i in range(max_iter)]
+        y_proba2 = [models_final[i][3] for i in range(max_iter)]
 
         run_time = time.time() - run_start_time
         print('Simulation Completed')
         print('Run Duration: {}\n'.format(time.strftime("%H:%M:%S", time.gmtime(run_time))))
 
-        # Generating csv of predictions and metrics
+        # Generating csv of metrics
         column = ['acc_test_sequest', 'sens_test_sequest', 'spec_test_sequest', 'mcc_test_sequest',
                   'rmse_train_qsrr', 'rmse_test_qsrr',
                   'acc_test_both', 'sens_test_both', 'spec_test_both', 'mcc_test_both',
                   'acc_valid_sequest', 'sens_valid_sequest', 'spec_valid_sequest', 'mcc_valid_sequest',
                   'rmse_valid_qsrr',
                   'acc_valid_both', 'sens_valid_both', 'spec_valid_both', 'mcc_valid_both']
-        pd.DataFrame(masterStats, columns=column).to_csv('results/iteration_metrics_{}iters_run{}.csv'.format(max_iter, run_num)
-                                                         , header=True)
-        dfstats_proba1.to_csv('results/sequest_predictedprobability1_{}iters_run{}.csv'.format(max_iter, run_num)
-                              , header=True)
-        dfstats_yhat.to_csv('results/qsrr_trprediction_{}iters_run{}.csv'.format(max_iter, run_num)
-                            , header=True)
-        dfstats_proba2.to_csv('results/both_predictedprobability2_{}iters_run{}.csv'.format(max_iter, run_num)
-                              , header=True)
+        pd.DataFrame(masterStats, columns=column).to_csv('results/iteration_metrics_{}iters_run{}.csv'
+                                                         .format(max_iter, run_num), header=True)
+
+        # Generating predictions
+        pd.DataFrame(y_proba1).to_csv('results/sequest_predictedprobability1_{}iters_run{}.csv'
+                                      .format(max_iter, run_num), header=True)
+        pd.DataFrame(y_hat_reg).to_csv('results/qsrr_trprediction_{}iters_run{}.csv'
+                                       .format(max_iter, run_num), header=True)
+        pd.DataFrame(y_proba2).to_csv('results/both_predictedprobability2_{}iters_run{}.csv'
+                                      .format(max_iter, run_num), header=True)
 
         # plotting out selected metrics
         valid_mcc1 = [masterStats[i][13] for i in range(max_iter)]

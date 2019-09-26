@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from scipy.stats import norm
+from scipy.stats import norm, mode
 from matplotlib import pyplot as plt
 from preprocessing import labelling
 
@@ -75,6 +75,7 @@ def updatetable(main_data, limxc, limdelc, models, i):
 
     x_data_reg = x_data[['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
                          'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
+    y_data_reg = y_data[['tR / min']]
     y_hat_reg = reg.predict(x_data_reg).ravel()
 
     df2 = add_error(reg, df, [x_data, y_data])
@@ -97,4 +98,4 @@ def updatetable(main_data, limxc, limdelc, models, i):
     df_yproba1.loc[:, col_name1] = y_hat_proba1
     df_yhat.loc[:, col_name2] = y_hat_reg
     df_yproba2.loc[:, col_name3] = y_hat_proba2
-    return df_yproba1, df_yhat, df_yproba2
+    return y_proba1, y_hat_reg, y_hat_proba2
