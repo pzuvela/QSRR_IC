@@ -12,7 +12,6 @@ from multiprocessing import Pool
 start_time = time.time()
 rawdata = pd.read_csv(os.getcwd() + '/data/model_protein.csv')
 # modeldata = pd.read_csv(os.getcwd() + '/data/Bacillus_subtilis_deltaPrpE.csv')
-
 # validationdata = pd.read_csv(os.getcwd() + '/data/HeLaK.csv')
 # validationdata = pd.read_csv(os.getcwd() + '/data/Bacillus_subtilis_sp.csv')
 # validationdata = pd.read_csv(os.getcwd() + '/data/Bacillus_subtilis_deltaPrpE.csv')
