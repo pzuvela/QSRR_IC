@@ -22,6 +22,7 @@ Latest updates:
 
 # Import packages
 import numpy as np
+import pandas as pd
 from matplotlib import pyplot as plt
 
 
@@ -75,8 +76,9 @@ def ad(y1, y1_hat, y2, y2_hat, x1, x2, graph):
 
 def hat_matrix(x1, x2):
     # Compute the hat matrix
-    x1 = x1.values
-    x2 = x2.values
+    if isinstance(x1, pd.DataFrame):
+        x1 = x1.values
+        x2 = x2.values
     h_core = np.linalg.pinv(np.matmul(np.transpose(x1), x1))  # Core of the hat matrix
     h1_work = np.matmul(np.matmul(x1, h_core), np.transpose(x1))  # Training hat matrix
     h2_work = np.matmul(np.matmul(x2, h_core), np.transpose(x2))  # Testing hat matrix

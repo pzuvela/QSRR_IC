@@ -6,7 +6,7 @@ from scipy.optimize import Bounds, minimize
 from sklearn.model_selection import KFold, cross_val_score
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.metrics import mean_squared_error, make_scorer
+from sklearn.metrics import mean_squared_error, make_scorer, r2_score
 from func import knee
 from petar.ad import ad
 
@@ -219,58 +219,6 @@ def regress_stats(traindata, testdata, text=False):
 
 
 def regress_plot(teststat, trainstat=None, optstat=None):
-    x_test, y_test, y_hat_test = teststat
-    y_hat_test = y_hat_test.ravel()
-
-    test_residue = y_hat_test - y_test
-
-    # res histogram
-    fig7, ax7 = plt.subplots()
-    ax7.hist(test_residue, color='C1', density=True, label='Test Set')
-
-    # residue plot
-    fig1, ax1 = plt.subplots()
-    ax1.scatter(y_test, test_residue, c='C1', label='Test Set')
-    lim1 = [np.min(ax1.get_xlim()), np.max(ax1.get_xlim())]
-    lim2 = [0, 0]
-    ax1.plot(lim1, lim2, c='k')
-    ax1.set_xlim(lim1)
-    ax1.set_xlabel('Retention Time')
-    ax1.set_ylabel('Residue')
-    ax1.set_title('Residue of prediction')
-    ax1.legend()
-
-    # response plot
-    fig2, ax2 = plt.subplots()
-    ax2.scatter(y_test, y_hat_test, c='C1', label='Test Set')
-    lims = [
-        np.min([ax2.get_xlim(), ax2.get_ylim()]),  # min of both axes
-        np.max([ax2.get_xlim(), ax2.get_ylim()])  # max of both axes
-    ]
-    ax2.plot(lims, lims, c='k')
-    ax2.set_xlim(lims)
-    ax2.set_ylim(lims)
-    ax2.set_xlabel('Actual')
-    ax2.set_ylabel('Predicted')
-    ax2.set_title('Response Plot')
-    ax2.legend()
-
-    if trainstat is not None:
-        x_train, y_train, y_hat_train = trainstat
-        y_hat_train = y_hat_train.ravel()
-
-        train_residue = y_hat_train - y_train
-
-        ad(y_train, y_hat_train, y_test, y_hat_test, x_train, x_test, 'yes')
-
-        ax7.hist(train_residue, color='C0', alpha=0.7, density=True, label='Train Set')
-
-        ax1.scatter(y_train, train_residue, alpha=0.7, c='C0', label='Train Set')
-        ax1.legend()
-
-        ax2.scatter(y_train, y_hat_train, alpha=0.7, c='C0', label='Train Set')
-        ax2.legend()
-
     if optstat is not None:
         [x_values, rmsecv] = optstat
 
@@ -283,3 +231,69 @@ def regress_plot(teststat, trainstat=None, optstat=None):
         ax3.set_ylabel('Error')
         ax3.set_title('Optimisation of LVs')
         ax3.legend()
+
+    fig7, ax7 = plt.subplots()
+    fig1, ax1 = plt.subplots()
+    fig2, ax2 = plt.subplots()
+
+    if trainstat is not None:
+        x_test, y_test, y_hat_test = teststat
+        x_train, y_train, y_hat_train = trainstat
+        y_hat_train = y_hat_train.ravel()
+
+        train_r2 = r2_score(y_train, y_hat_train)
+        train_residue = y_hat_train - y_train
+
+        ad(y_train, y_hat_train, y_test, y_hat_test, x_train, x_test, 'yes')
+
+        ax7.hist(train_residue, color='C0', alpha=0.7, density=True, label='Train Set')
+
+        ax1.scatter(y_train, train_residue, alpha=0.7, c='C0', label='Train Set')
+        ax1.legend()
+
+        ax2.scatter(y_train, y_hat_train, alpha=0.7, c='C0', label='Train Set')
+        ax2.text(0.8, 0.17, 'Training R2 = {:.2f}'.format(train_r2), horizontalalignment='center',
+                 verticalalignment='center', transform=ax2.transAxes)
+        ax2.legend()
+
+    x_test, y_test, y_hat_test = teststat
+    y_hat_test = y_hat_test.ravel()
+
+    test_residue = y_hat_test - y_test
+
+    # res histogram
+    ax7.hist(test_residue, color='C1', density=True, label='Test Set')
+    ax7.set_ylabel('Instances')
+    ax7.set_xlabel('Residual')
+    ax7.set_title('Residual Histogram')
+
+    # residue plot
+    ax1.scatter(y_test, test_residue, c='C1', label='Test Set')
+    lim1 = [np.min(ax1.get_xlim()), np.max(ax1.get_xlim())]
+    lim2 = [0, 0]
+    ax1.plot(lim1, lim2, c='k')
+    ax1.set_xlim(lim1)
+    ax1.set_xlabel('Retention Time')
+    ax1.set_ylabel('Residual')
+    ax1.set_title('Residual of prediction')
+    ax1.legend()
+
+    # response plot
+    test_r2 = r2_score(y_test, y_hat_test)
+    ax2.scatter(y_test, y_hat_test, c='C1', label='Test Set')
+    lims = [
+        np.min([ax2.get_xlim(), ax2.get_ylim()]),  # min of both axes
+        np.max([ax2.get_xlim(), ax2.get_ylim()])  # max of both axes
+    ]
+    ax2.plot(lims, lims, c='k')
+    ax2.set_xlim(lims)
+    ax2.set_ylim(lims)
+    ax2.set_xlabel('Actual')
+    ax2.set_ylabel('Predicted')
+    ax2.set_title('Response Plot')
+    ax2.text(0.8, 0.07, 'Testing R2 = {:.2f}'.format(test_r2), horizontalalignment='center',
+             verticalalignment='center', transform=ax2.transAxes)
+    ax2.legend()
+
+    return fig7, fig1, fig2, ax2
+    # residual histogram, residual distribution, response plot
