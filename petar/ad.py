@@ -22,6 +22,7 @@ Latest updates:
 
 # Import packages
 import numpy as np
+import pandas as pd
 from matplotlib import pyplot as plt
 
 
@@ -47,17 +48,17 @@ def ad(y1, y1_hat, y2, y2_hat, x1, x2, graph):
     k = np.size(x1, axis=1) + 1
     hat_star = 3 * (k / len(h1))
 
-    print('## Leverage & standardized residuals computed...')
-    print('## Critical leverage value is: ' + str("%.3f" % hat_star))
+    # print('## Leverage & standardized residuals computed...')
+    # print('## Critical leverage value is: ' + str("%.3f" % hat_star))
 
     # Plotting Williams plot
     if graph == 'yes':
-        print('## Constructing Williams plot...')
+        # print('## Constructing Williams plot...')
         # Warning limit for std residuals
         sigma = 3
         fig, ad_plot = plt.subplots()
-        plt.scatter(h1, r1, c='C1', label='Training set')
-        plt.scatter(h2, r2, c='C0', label='Testing set')
+        plt.scatter(h1, r1, c='C0', label='Training set')
+        plt.scatter(h2, r2, c='C1', label='Testing set')
         plt.axhline(y=sigma, xmin=0, xmax=1, color='red', linestyle='dashed')
         plt.axhline(y=-sigma, xmin=0, xmax=1, color='red', linestyle='dashed')
         plt.axvline(x=hat_star, ymin=-sigma, ymax=sigma, color='red', linestyle='dashed')
@@ -67,15 +68,17 @@ def ad(y1, y1_hat, y2, y2_hat, x1, x2, graph):
         ad_plot.legend()
 
     elif graph == 'no':
-        print('\n')
-        print('## Not constructing Williams plot...')
+        pass
+        # print('\n')
+        # print('## Not constructing Williams plot...')
     return hat, res_scaled, hat_star
 
 
 def hat_matrix(x1, x2):
     # Compute the hat matrix
-    x1 = x1.values
-    x2 = x2.values
+    if isinstance(x1, pd.DataFrame):
+        x1 = x1.values
+        x2 = x2.values
     h_core = np.linalg.pinv(np.matmul(np.transpose(x1), x1))  # Core of the hat matrix
     h1_work = np.matmul(np.matmul(x1, h_core), np.transpose(x1))  # Training hat matrix
     h2_work = np.matmul(np.matmul(x2, h_core), np.transpose(x2))  # Testing hat matrix

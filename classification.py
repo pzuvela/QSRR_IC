@@ -8,9 +8,6 @@ from sklearn.model_selection import GridSearchCV, KFold, cross_val_score
 from scipy.optimize import minimize, Bounds
 
 
-# input from preprocessing
-
-
 # classification
 def classify(traintestset, n_splits, optimise=False):
     x_train, x_test, y_train, y_test = traintestset
@@ -19,7 +16,7 @@ def classify(traintestset, n_splits, optimise=False):
     clf = GradientBoostingClassifier()
 
     if optimise is True:
-        print(' ')
+        print('')
         print('    - Commencing Optimisation of Classification Model -')
 
         def fun(x):
@@ -90,9 +87,13 @@ def classify(traintestset, n_splits, optimise=False):
         print(' ')
 
     clf.fit(x_train, y_train)
-    y_testpred = clf.predict(x_test)
+    y_hat_train = clf.predict(x_train)
+    y_hat_test = clf.predict(x_test)
 
-    return [clf, [y_test, y_testpred]]
+    feature_importance = clf.feature_importances_
+    y_hat_proba = clf.predict_proba(x_test)[:, 1]
+
+    return [clf, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test, y_hat_proba], [feature_importance]]
 
 
 """
@@ -119,64 +120,84 @@ def classify(traintestset, n_splits, optimise=False):
 """
 
 
-def classify_plot(clf, testset):
-    x_test, y_test = testset
+def classify_plot(testdata, optdata):
+    x_test, y_test, y_hat_test, y_hat_testproba = testdata
+    feature_importance = optdata
 
-    # Features importance in clf model
-    feature_importance = clf.feature_importances_
-    feature_importance = 100.0 * (feature_importance / feature_importance.max())
-    sorted_idx = np.argsort(feature_importance)
-    pos = np.arange(sorted_idx.shape[0]) + .5  # to rank from most important to least
-    labels = ['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
-              'error']
-    sorted_labels = [labels[i] for i in sorted_idx]
-    fig4, ax4 = plt.subplots()
-    ax4.barh(pos, feature_importance[sorted_idx], color='C1', align='center')
-    ax4.set_title('Variables Importance')
-    ax4.set_ylabel('Variables')
-    ax4.set_xlabel('Normalised Importance')
-    ax4.set_yticks(pos)
-    ax4.set_yticklabels(sorted_labels)
+    if feature_importance is not None:
+        # Features importance in clf model
+        feature_importance = 100.0 * (feature_importance / feature_importance.max())
+        sorted_idx = np.argsort(feature_importance)
+        pos = np.arange(sorted_idx.shape[0]) + .5  # to rank from most important to least
+        labels = ['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
+                  'error']
+        sorted_labels = [labels[i] for i in sorted_idx]
+        fig4, ax4 = plt.subplots()
+        ax4.barh(pos, feature_importance[sorted_idx], color='C1', align='center')
+        ax4.set_title('Variables Importance')
+        ax4.set_ylabel('Variables')
+        ax4.set_xlabel('Normalised Importance')
+        ax4.set_yticks(pos)
+        ax4.set_yticklabels(sorted_labels)
 
     # Probabilistic Distribution in clf model
     y_test_good_ind = (y_test == 1)
     y_test_bad_ind = ~y_test_good_ind
-    y = clf.predict_proba(x_test)[:, 1]
-    x = np.linspace(1, len(y) - 1, len(y), dtype='int')
+    x = np.linspace(1, len(y_hat_testproba) - 1, len(y_hat_testproba), dtype='int')
 
     fig5, ax5 = plt.subplots()
-    ax5.scatter(x[y_test_bad_ind], y[y_test_bad_ind], c='C3')
-    ax5.scatter(x[y_test_good_ind], y[y_test_good_ind], c='C2')
+    ax5.scatter(x[y_test_bad_ind], y_hat_testproba[y_test_bad_ind], c='C3')
+    ax5.scatter(x[y_test_good_ind], y_hat_testproba[y_test_good_ind], c='C2')
     lim1 = [np.min(ax5.get_xlim()), np.max(ax5.get_xlim())]
     lim2 = [0.5, 0.5]
     ax5.set_title('Prediction Probability Distribution')
     ax5.set_ylabel('Prediction Probability')
     ax5.plot(lim1, lim2, c='k')
 
-    # plt.show()
 
+def classify_stats(traindata, testdata, text=False):
+    if traindata is None:
+        x_test, y_test, y_hat_test, y_hat_testproba = testdata
 
-def classify_stats(stats):
-    y_test, y_testpred = stats
+        # clf model statistics
+        cm = confusion_matrix(y_test, y_hat_test)
+        table = pd.DataFrame(cm, columns=['pred_neg', 'pred_pos'], index=['neg', 'pos'])
+        tn, fp, fn, tp = cm.ravel()
+        acc_test = (tp + tn) / (tn + fp + fn + tp)
+        sens_test = tp / (tp + fn)  # also known as recall
+        spec_test = tn / (tn + fp)
+        mcc_test = ((tp * tn) - (fp * fn)) / ((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)) ** 0.5
 
-    # clf model statistics
-    cm = confusion_matrix(y_test, y_testpred)
-    table = pd.DataFrame(cm, columns=['pred_neg', 'pred_pos'], index=['neg', 'pos'])
-    tn, fp, fn, tp = cm.ravel()
-    acc = (tp + tn) / (tn + fp + fn + tp)
-    sens = tp / (tp + fn)  # also known as recall
-    prec = tp / (tp + fp)
-    spec = tn / (tn + fp)
-    mcc = ((tp * tn) - (fp * fn)) / ((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)) ** 0.5
+        # plotting Metrics stats
+        if text is True:
+            print('----------- Classification Model Stats ------------')
+            print(table)
+            print('Accuracy: {:.2f}\n'
+                  'Sensitivity: {:.2f}\n'
+                  'Specificity: {:.2f}\n'
+                  'Matthews CC: {:.2f}'.format(acc, sens, spec, mcc))
+            print('--------------- End of Statistics -----------------')
 
-    # plotting performance stats
-    print('----------- Classification Model Stats ------------')
-    print(table)
-    print('Accuracy: {:.2f}\n'
-          'Sensitivity: {:.2f}\n'
-          'Specificity: {:.2f}\n'
-          'Matthews CC: {:.2f}'.format(acc, sens, spec, mcc))
-    print('---------- End of Performance Statistics ----------')
+        return acc_test, sens_test, spec_test, mcc_test
+    else:
+        x_test, y_test, y_hat_test, y_hat_testproba = testdata
+
+        cm_test = confusion_matrix(y_test, y_hat_test)
+        tn, fp, fn, tp = cm_test.ravel()
+        acc_test = (tp + tn) / (tn + fp + fn + tp)
+        sens_test = tp / (tp + fn)  # also known as recall
+        spec_test = tn / (tn + fp)
+        mcc_test = ((tp * tn) - (fp * fn)) / ((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)) ** 0.5
+
+        x_train, y_train, y_hat_train = traindata
+        cm_train = confusion_matrix(y_train, y_hat_train)
+        tn, fp, fn, tp = cm_train.ravel()
+        acc_train = (tp + tn) / (tn + fp + fn + tp)
+        sens_train = tp / (tp + fn)  # also known as recall
+        spec_train = tn / (tn + fp)
+        mcc_train = ((tp * tn) - (fp * fn)) / ((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)) ** 0.5
+
+        return acc_train, sens_train, spec_train, mcc_train, acc_test, sens_test, spec_test, mcc_test
 
 
 def add_status(gbc, data, scaleddata, name):
@@ -197,6 +218,6 @@ def add_status(gbc, data, scaleddata, name):
         elif y_data[i] == 1 and y_pred[i] == 0:
             status.append('fn')
 
-    data[label] = status
+    data.loc[:, label] = status
 
     return data

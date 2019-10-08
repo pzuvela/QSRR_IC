@@ -1,20 +1,19 @@
 import numpy as np
 import random as rand
+import pandas as pd
 from matplotlib import pyplot as plt
 from scipy.optimize import Bounds, minimize
 from sklearn.model_selection import KFold, cross_val_score
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.metrics import mean_squared_error, make_scorer
+from sklearn.metrics import mean_squared_error, make_scorer, r2_score
+from func import knee
 from petar.ad import ad
 
 
-# input from preprocessing
-# splitting(df)[1] should be x_train ...
-
-
-def regress_pls(traintestset, n_splits, imax, optimise=False):
+def regress_pls(traintestset, n_splits, imax, optimise=False, text=False):
     x_train, x_test, y_train, y_test = traintestset
+    x_train = x_train.values
 
     # Partial Least Squares (PLS) Method
 
@@ -23,7 +22,7 @@ def regress_pls(traintestset, n_splits, imax, optimise=False):
         print(' ')
         print('    --- Commencing Optimisation of Regression Model ---')
         nlvs = np.zeros(imax - 1)
-        rmsee = np.zeros(imax - 1)
+        # rmsee = np.zeros(imax - 1)
         rmsecv = np.zeros(imax - 1)
         for i in range(1, imax):
             # Initiate cross validation (CV) model
@@ -36,6 +35,13 @@ def regress_pls(traintestset, n_splits, imax, optimise=False):
             rmse_train = np.zeros(n_splits)
             rmse_test = np.zeros(n_splits)
             j = 0
+
+            # # Construct Scoring Object
+            # def rmse(y_true, y_pred):
+            #     return np.sqrt(np.square(100 * (y_pred - y_true) / y_true).mean())
+            # scorer = make_scorer(rmse, greater_is_better=False)
+            #
+            # rmse_test = cross_val_score(pls_cv, x_train, y_train, cv=kf, scoring=scorer)
 
             for train_i, test_i in kf.split(x_train, y_train):
                 # Defining the training set
@@ -54,19 +60,20 @@ def regress_pls(traintestset, n_splits, imax, optimise=False):
                 rmse_test[j] = (np.sqrt(mean_squared_error(y_test_cv, y_test_hat_cv)))
                 # rmse_test[j] = 100 * np.sqrt(np.mean(np.square((y_test_hat_cv - y_test_cv) / y_test_cv)))
 
-                y_train_hat = pls_cv.predict(x_train).ravel()
+                # y_train_hat = pls_cv.predict(x_train).ravel()
                 # rmse_train[j] = np.sqrt(mean_squared_error(y_train, y_train_hat))
-                rmse_train[j] = np.sqrt(np.mean(np.square(np.subtract(y_train, y_train_hat))))
+                # rmse_train[j] = np.sqrt(np.mean(np.square(np.subtract(y_train, y_train_hat))))
                 j += 1
 
             # Gathering Statistic
             nlvs[i - 1] = i
-            rmsee[i - 1] = np.mean(rmse_train)
+            # rmsee[i - 1] = np.mean(rmse_train)
             rmsecv[i - 1] = np.mean(rmse_test)
 
         # Implementing optimised parameters
-        optstats = [nlvs, rmsecv, rmsee]
-        lvs = 5  # some code to find knee joint
+        # optstats = [nlvs, rmsecv, rmsee]
+        optstats = [nlvs, rmsecv]
+        lvs = knee(nlvs, rmsecv)  # some code to find knee point
         print('    Optimised Lvs: {}'.format(lvs))
         print('    ------------ Completion of Optimisation -----------')
         print(' ')
@@ -74,11 +81,13 @@ def regress_pls(traintestset, n_splits, imax, optimise=False):
         optstats = None
         lvs = 5
 
-    print('The number of nLVs used is {}'.format(lvs))
+    if text is True:
+        print('The number of nLVs used is {}'.format(lvs))
     pls = PLSRegression(n_components=lvs)
     pls.fit(x_train, y_train)
     y_hat_test = pls.predict(x_test)
     y_hat_train = pls.predict(x_train)
+    x_train = pd.DataFrame(x_train, columns=x_test.columns)
 
     return pls, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test], optstats
 
@@ -112,7 +121,7 @@ def regress_gbr(traintestset, n_splits, optimise=False):
             def rmse(y_true, y_pred):
                 return np.sqrt(np.square(100 * (y_pred - y_true) / y_true).mean())
 
-            scorer = make_scorer(rmse)
+            scorer = make_scorer(rmse, greater_is_better=False)
             # CV score
             score = cross_val_score(opt_gbr, x_train, y_train, cv=kfold, scoring=scorer)
             print(np.mean(score))
@@ -180,35 +189,98 @@ def regress_gbr(traintestset, n_splits, optimise=False):
     return gbr, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test], None
 
 
+def regress_stats(traindata, testdata, text=False):
+    if traindata is not None:
+        x_train, y_train, y_hat_train = traindata
+        msre_train = np.square(100 * (y_hat_train - y_train) / y_train).mean()
+        rmsre_train = np.sqrt(msre_train)
+
+        x_test, y_test, y_hat_test = testdata
+        msre_test = np.square(100 * (y_hat_test - y_test) / y_test).mean()
+        rmsre_test = np.sqrt(msre_test)
+        # Printing metrics
+        if text is True:
+            print('------------- Regression Model Stats --------------')
+            print('The training RMSRE is {:.2f}%'.format(rmsre_train))
+            print('The testing RMSRE is {:.2f}%'.format(rmsre_test))
+            print('--------------- End of Statistics -----------------')
+        return rmsre_train, rmsre_test
+    else:
+        x_test, y_test, y_hat_test = testdata
+        msre_test = np.square(100 * (y_hat_test - y_test) / y_test).mean()
+        rmsre_test = np.sqrt(msre_test)
+
+        # Printing metrics
+        if text is True:
+            print('------------- Regression Model Stats --------------')
+            print('The testing RMSRE is {:.2f}%'.format(rmsre_test))
+            print('--------------- End of Statistics -----------------')
+        return rmsre_test
+
+
 def regress_plot(teststat, trainstat=None, optstat=None):
+    if optstat is not None:
+        [x_values, rmsecv] = optstat
+
+        # LV optimisation plot
+        fig3, ax3 = plt.subplots()
+        ax3.plot(x_values, rmsecv, label='RMSECV')
+        # ax3.plot(x_values, rmsee, label='RMSEE')
+        ax3.set_xticks(x_values)
+        ax3.set_xlabel('Number of LVs')
+        ax3.set_ylabel('Error')
+        ax3.set_title('Optimisation of LVs')
+        ax3.legend()
+
+    fig7, ax7 = plt.subplots()
+    fig1, ax1 = plt.subplots()
+    fig2, ax2 = plt.subplots()
+
+    if trainstat is not None:
+        x_test, y_test, y_hat_test = teststat
+        x_train, y_train, y_hat_train = trainstat
+        y_hat_train = y_hat_train.ravel()
+
+        train_r2 = r2_score(y_train, y_hat_train)
+        train_residue = y_hat_train - y_train
+
+        ad(y_train, y_hat_train, y_test, y_hat_test, x_train, x_test, 'yes')
+
+        ax7.hist(train_residue, color='C0', alpha=0.7, density=True, label='Train Set')
+
+        ax1.scatter(y_train, train_residue, alpha=0.7, c='C0', label='Train Set')
+        ax1.legend()
+
+        ax2.scatter(y_train, y_hat_train, alpha=0.7, c='C0', label='Train Set')
+        ax2.text(0.8, 0.17, 'Training R2 = {:.2f}'.format(train_r2), horizontalalignment='center',
+                 verticalalignment='center', transform=ax2.transAxes)
+        ax2.legend()
+
     x_test, y_test, y_hat_test = teststat
     y_hat_test = y_hat_test.ravel()
 
-    # Model Statistics
-    msre_test = np.square(100 * (y_hat_test - y_test) / y_test).mean()
-    rmsre_test = np.sqrt(msre_test)
-    print('The testing RMSRE is {:.2f}%'.format(rmsre_test))
     test_residue = y_hat_test - y_test
 
     # res histogram
-    fig7, ax7 = plt.subplots()
-    ax7.hist(test_residue, color='C0')
+    ax7.hist(test_residue, color='C1', density=True, label='Test Set')
+    ax7.set_ylabel('Instances')
+    ax7.set_xlabel('Residual')
+    ax7.set_title('Residual Histogram')
 
     # residue plot
-    fig1, ax1 = plt.subplots()
-    ax1.scatter(y_test, test_residue, c='C0', label='Test Set')
+    ax1.scatter(y_test, test_residue, c='C1', label='Test Set')
     lim1 = [np.min(ax1.get_xlim()), np.max(ax1.get_xlim())]
     lim2 = [0, 0]
     ax1.plot(lim1, lim2, c='k')
     ax1.set_xlim(lim1)
     ax1.set_xlabel('Retention Time')
-    ax1.set_ylabel('Residue')
-    ax1.set_title('Residue of prediction')
+    ax1.set_ylabel('Residual')
+    ax1.set_title('Residual of prediction')
     ax1.legend()
 
     # response plot
-    fig2, ax2 = plt.subplots()
-    ax2.scatter(y_test, y_hat_test, c='C0', label='Test Set')
+    test_r2 = r2_score(y_test, y_hat_test)
+    ax2.scatter(y_test, y_hat_test, c='C1', label='Test Set')
     lims = [
         np.min([ax2.get_xlim(), ax2.get_ylim()]),  # min of both axes
         np.max([ax2.get_xlim(), ax2.get_ylim()])  # max of both axes
@@ -219,58 +291,9 @@ def regress_plot(teststat, trainstat=None, optstat=None):
     ax2.set_xlabel('Actual')
     ax2.set_ylabel('Predicted')
     ax2.set_title('Response Plot')
+    ax2.text(0.8, 0.07, 'Testing R2 = {:.2f}'.format(test_r2), horizontalalignment='center',
+             verticalalignment='center', transform=ax2.transAxes)
     ax2.legend()
 
-    if trainstat is not None:
-        x_train, y_train, y_hat_train = trainstat
-        y_hat_train = y_hat_train.ravel()
-
-        train_residue = y_hat_train - y_train
-
-        ad(y_train, y_hat_train, y_test, y_hat_test, x_train, x_test, 'yes')
-
-        ax7.hist(train_residue, color='C1', alpha=0.7)
-
-        ax1.scatter(y_train, train_residue, alpha=0.7, c='C1', label='Train Set')
-        ax1.legend()
-
-        ax2.scatter(y_train, y_hat_train, alpha=0.7, c='C1', label='Train Set')
-        ax2.legend()
-
-    if optstat is not None:
-        [x_values, rmsecv, rmsee] = optstat
-
-        # LV optimisation plot
-        fig3, ax3 = plt.subplots()
-        ax3.plot(x_values, rmsecv, label='RMSECV')
-        ax3.plot(x_values, rmsee, label='RMSEE')
-        ax3.set_xticks(x_values)
-        ax3.set_xlabel('Number of LVs')
-        ax3.set_ylabel('Error')
-        ax3.set_title('Optimisation of LVs')
-        ax3.legend()
-
-    print('------------------Plots Generated------------------')
-    # plt.show()
-
-
-def add_error(optpls, data, scaleddata, traindata=None):
-    # addition of error into data
-    x_data_reg = scaleddata[0][['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
-                                'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
-    y_data = scaleddata[1]['tR / min'].values
-    y_hat_all = optpls.predict(x_data_reg)
-
-    re = 100 * np.abs((y_hat_all.ravel() - y_data) / y_data)
-
-    data['error'] = re.ravel()
-
-    if traindata is not None:
-        # calculation of mre
-        x_train, y_train, y_hat_train = traindata
-        msre = np.square(100 * (y_hat_train - y_train) / y_train).mean()
-        rmsre = np.sqrt(msre)
-        print('The training RMSRE is {:.2f}%'.format(rmsre))
-        return data, rmsre
-    else:
-        return data
+    return fig7, fig1, fig2, ax2
+    # residual histogram, residual distribution, response plot
