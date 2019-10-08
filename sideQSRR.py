@@ -55,16 +55,16 @@ if __name__ == '__main__':
     models_final = p.map(model_parallel, zip(range(max_iter)))
 
     masterStats = [models_final[i][:2] for i in range(max_iter)]
-    y_pred = [models_final[i][2] for i in range(max_iter)]
-    y_true = models_final[0][3]
+    y_pred = [models_final[i][3] for i in range(max_iter)]
+    y_true = models_final[0][2]
 
     run_time = time.time() - start_time
     print('Simulation Completed')
     print('Duration: {}\n'.format(time.strftime("%H:%M:%S", time.gmtime(run_time))))
 
     column = ['rmsre_train', 'rmsre_test']
-    pd.DataFrame(masterStats, columns=column).to_csv('sideQSRR/iteration_metrics_sys{}{}_{}iters.csv'
-                                                     .format(sys, mean, max_iter), header=True)
+    add_true_mean_std(None, pd.DataFrame(masterStats, columns=column)).to_csv(
+        'sideQSRR/iteration_metrics_sys{}{}_{}iters.csv'.format(sys, mean, max_iter), header=True)
 
     y_pred = pd.DataFrame(y_pred)
     add_true_mean_std(y_true, y_pred).to_csv('sideQSRR/qsrr_trprediction_sys{}{}_{}iters.csv'

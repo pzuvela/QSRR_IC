@@ -97,10 +97,24 @@ def updatetable(main_data, limxc, limdelc, models, i):
 
 
 def add_true_mean_std(y_true, df):
-    mean = df.mean(axis=0).ravel()
-    std = df.std(axis=0).ravel()
-    stats = [y_true, mean, std]
-    df_stats = pd.DataFrame(stats, index=['actual', 'mean', 'std'])
+    stats = []
+    for i in range(len(df.columns)):
+        label = df.columns[i]
+        col_values = np.sort(df[label].values)
+        j = int(len(col_values) * 2.5 / 100)
+        k = int(len(col_values) - j)
+        mean = col_values.mean()
+        lower_value = col_values[j]
+        upper_value = col_values[k]
+        lower_limit = mean - lower_value
+        upper_limit = upper_value - mean
+        stats.append([mean, lower_limit, upper_limit, lower_value, upper_value])
+    stats = np.transpose(stats)
+    indices = ['mean', 'lower_limit', 'upper_limit', 'lower_value', 'upper_value']
+    if y_true is not None:
+        stats = np.vstack((y_true, stats))
+        indices = ['actual', 'mean', 'lower_limit', 'upper_limit', 'lower_value', 'upper_value']
+    df_stats = pd.DataFrame(stats, index=indices, columns=df.columns)
     df = pd.concat([df_stats, df])
     return df
 
@@ -115,7 +129,7 @@ def add_mean_std(df):
 
 
 def get_limits(file):
-    df = pd.read_csv('C://Users/dentr/Desktop/{}.csv'.format(file))
+    df = pd.read_csv(file)
     stats_list = []
 
     for i in range(1, len(df.columns)):
@@ -132,4 +146,4 @@ def get_limits(file):
         towrite = '{} limits are {:.2f}(+{:.2f};-{:.2f})'.format(label, mean, upper_limit, lower_limit)
         print(towrite)
     pd.DataFrame(stats_list, columns=['label', 'mean', 'lower_limit', 'upper_limit', 'lower_value', 'upper_value'])\
-        .to_csv('{}_stats.csv'.format(file), index=False)
+        .to_csv('{}_stats.csv'.format(file[:-4]), index=False)

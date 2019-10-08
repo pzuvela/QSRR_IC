@@ -16,7 +16,7 @@ rawdata = pd.read_csv(os.getcwd() + '/data/model_protein.csv')
 # validationdata = pd.read_csv(os.getcwd() + '/data/Bacillus_subtilis_deltaPrpE.csv')
 
 masterStats = []
-max_iter = 5
+max_iter = 100
 max_run = 1
 proc_i = 4
 limxc = [1.9, 2.2, 3.75]
@@ -88,8 +88,9 @@ if __name__ == '__main__':
                   'acc_valid_sequest', 'sens_valid_sequest', 'spec_valid_sequest', 'mcc_valid_sequest',
                   'rmse_valid_qsrr',
                   'acc_valid_both', 'sens_valid_both', 'spec_valid_both', 'mcc_valid_both']
-        pd.DataFrame(masterStats, columns=column).to_csv('results/iteration_metrics_{}iters_run{}.csv'
-                                                         .format(max_iter, run_num), header=True)
+        df_masterstats = pd.DataFrame(masterStats, columns=column)
+        add_true_mean_std(None, df_masterstats).to_csv('results/iteration_metrics_{}iters_run{}.csv'
+                                                       .format(max_iter, run_num), header=True)
 
         # Generating predictions
         df_yproba1 = pd.DataFrame(y_proba1)
@@ -101,11 +102,7 @@ if __name__ == '__main__':
                                                         .format(max_iter, run_num), header=True)
 
         df_yproba2 = pd.DataFrame(y_proba2)
-        add_mean_std(df_yproba2).to_csv('results/both_predictedprobability2_{}iters_run{}.csv'
-                                        .format(max_iter, run_num), header=True)
-
-        # plotting out selected metrics
-        # utilise savefig for plotting purpose
-
+        add_true_mean_std(y_true1, df_yproba2).to_csv('results/both_predictedprobability2_{}iters_run{}.csv'
+                                                      .format(max_iter, run_num), header=True)
     total_time = time.time() - start_time
     print('\nTotal Duration: {}'.format(time.strftime("%H:%M:%S", time.gmtime(total_time))))
