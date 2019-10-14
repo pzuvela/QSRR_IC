@@ -21,7 +21,7 @@ max_depth = [1, 5, 1]
 modeldata = pd.read_csv(os.getcwd() + '/data/model_protein.csv')
 limxc = [1.9, 2.2, 3.75]
 limdelc = 0.08
-n_splits = 3
+n_splits = 5
 
 df = labelling(modeldata, limxc, limdelc, None, 'delc')
 scaled_data, labelset, trset, sc, tr_max = splitting(df, 'Sequest')
@@ -59,7 +59,7 @@ print('    ---------------- Initial Parameters ---------------')
 print('    n_estimators: {:.0f}\n'
       '    learning_rate: {:.2f} \n'
       '    max_depth: {:.0f}\n'
-      '    Initial MSEP: {:.2f}\n'
+      '    Initial MSEP: {:.2f}'
       '    Initial %RMSEP: {:.2f}'
       .format(initial['n_estimators'],
               initial['learning_rate'],
@@ -77,7 +77,7 @@ max_depth_min, max_depth_max = 1, 5
 bounds = opt.Bounds([n_est_min, lr_min, max_depth_min],
                     [n_est_max, lr_max, max_depth_max])
 
-final_values = opt.differential_evolution(fun, bounds, disp=True)
+final_values = opt.differential_evolution(fun, bounds, disp=True, updating='deferred', workers=32)
 opt_dict = {'n_estimators': int(np.round(final_values.x[0], decimals=0)),
             'learning_rate': final_values.x[1],
             'max_depth': int(np.round(final_values.x[2], decimals=0))
