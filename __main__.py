@@ -31,12 +31,12 @@ def model_parallel(arg_iter):
     validationdata = validationdata.reset_index()
 
     # warnings.simplefilter('ignore')
-    models, stats = traintest(modeldata, limxc, limdelc, n_splits, max_component, text=False)
+    models, stats = traintest(modeldata, limxc, limdelc, n_splits, max_component, disp=False)
     # stats is in the following format: acc, sens, spec, mcc,    for sequest
     #                                   rmsre_train, rmsre_test, for qsrr
     #                                   acc, sens, spec, mcc     for sequest + qsrr
 
-    validstats = validate(validationdata, models, limxc, limdelc, text=False)
+    validstats = validate(validationdata, models, limxc, limdelc, disp=False)
     # validstats is in the following format: acc, sens, spec, mcc,    for sequest
     #                                        rmsre_test,              for qsrr
     #                                        acc, sens, spec, mcc     for sequest + qsrr

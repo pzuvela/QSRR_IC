@@ -7,7 +7,7 @@ from sklearn.model_selection import KFold, cross_val_score
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.metrics import mean_squared_error, make_scorer, r2_score
-from func import knee
+from func import knee, get_rmsre
 from petar.ad import ad
 
 
@@ -118,12 +118,9 @@ def regress_gbr(traintestset, n_splits, optimise=False):
             kfold = KFold(n_splits=n_splits)
 
             # Scoring object
-            def rmse(y_true, y_pred):
-                return np.sqrt(np.square(100 * (y_pred - y_true) / y_true).mean())
-
-            scorer = make_scorer(rmse, greater_is_better=False)
+            scorer = make_scorer(get_rmsre, greater_is_better=False)
             # CV score
-            score = cross_val_score(opt_gbr, x_train, y_train, cv=kfold, scoring=scorer)
+            score = cross_val_score(opt_gbr, x_train, y_train, cv=kfold, scoring='neg_mean_squared_error')
             print(np.mean(score))
 
             return np.mean(score)
