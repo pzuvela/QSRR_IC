@@ -6,6 +6,7 @@ import numpy as np
 import scipy.optimize as opt
 import func
 from sklearn.ensemble import GradientBoostingRegressor
+from xgboost import XGBRegressor
 from sklearn.metrics import make_scorer, mean_squared_error
 from sklearn.model_selection import KFold, cross_val_score
 from preprocessing import labelling, splitting
@@ -35,9 +36,9 @@ def fun(x):
     lr = x[1]
     max_depth = int(np.round(x[2], decimals=0))
 
-    opt_gbr = GradientBoostingRegressor(n_estimators=n_est, learning_rate=lr, max_depth=max_depth)
+    opt_gbr = XGBRegressor(n_estimators=n_est, learning_rate=lr, max_depth=max_depth, objective="reg:squarederror")
 
-    scorer = make_scorer(mean_squared_error)
+    scorer = make_scorer(func.get_rmsre)
 
     # CV score
     score = cross_val_score(opt_gbr, x_train, y_train, cv=KFold(n_splits=n_splits), scoring=scorer)
@@ -46,26 +47,32 @@ def fun(x):
 
 
 # Optimisation function begins here, takes in x_train, x_test, y_train, y_test
+# we can remove test dataset in the future when employing this as a function
 # Initial values
 start_time = time.time()
-gbr = GradientBoostingRegressor()
+gbr = XGBRegressor(objective="reg:squarederror")
 gbr.fit(x_train, y_train)
-y_hat = gbr.predict(x_test)
+y_hat = gbr.predict(x_train)
 initial = gbr.get_params()
-initial_mse = mean_squared_error(y_test, y_hat)
-initial_rmsre = func.get_rmsre(y_test, y_hat)
+initial_mse = mean_squared_error(y_train, y_hat)
+initial_rmsre_train = func.get_rmsre(y_train, y_hat)
+
+y_hat = gbr.predict(x_test)
+initial_rmsre_test = func.get_rmsre(y_test, y_hat)
 
 print('    ---------------- Initial Parameters ---------------')
 print('    n_estimators: {:.0f}\n'
       '    learning_rate: {:.2f} \n'
       '    max_depth: {:.0f}\n'
-      '    Initial MSEP: {:.2f}'
+      '    Initial MSEE: {:.2f}'
+      '    Initial %RMSEE: {:.2f}\n'
       '    Initial %RMSEP: {:.2f}'
       .format(initial['n_estimators'],
               initial['learning_rate'],
               initial['max_depth'],
               initial_mse,
-              initial_rmsre
+              initial_rmsre_train,
+              initial_rmsre_test
               )
       )
 print('    ---------------------------------------------------')
@@ -77,24 +84,32 @@ max_depth_min, max_depth_max = 1, 5
 bounds = opt.Bounds([n_est_min, lr_min, max_depth_min],
                     [n_est_max, lr_max, max_depth_max])
 
-final_values = opt.differential_evolution(fun, bounds, disp=True, updating='deferred', workers=32)
+final_values = opt.differential_evolution(fun, bounds, disp=True, updating='deferred', workers=-1, mutation=(1.5, 1.9),
+                                          popsize=20)
 opt_dict = {'n_estimators': int(np.round(final_values.x[0], decimals=0)),
             'learning_rate': final_values.x[1],
             'max_depth': int(np.round(final_values.x[2], decimals=0))
             }
 
 gbr.set_params(**opt_dict)
+
+gbr.fit(x_train, y_train)
+y_hat = gbr.predict(x_train)
+final_mse = mean_squared_error(y_train, y_hat)
+final_rmsre_train = func.get_rmsre(y_train, y_hat)
+
 y_hat = gbr.predict(x_test)
-final_mse = mean_squared_error(y_test, y_hat)
-final_rmsre = func.get_rmsre(y_test, y_hat)
+final_rmsre_test = func.get_rmsre(y_test, y_hat)
+
 elapsed_time = time.time() - start_time
 
 print('    ----------------- Final Parameters ----------------')
 print('    n_estimators: {:.0f}\n'
       '    learning_rate: {:.2f} \n'
       '    max_depth: {:.0f}\n'
-      '    Final MSECV: {:.3f}\n'
-      '    Final MSEP: {:.2f}'
+      '    Final %RMSECV: {:.3f}\n'
+      '    Final MSEE: {:.2f}'
+      '    Final %RMSEE: {:.2f}\n'
       '    Final %RMSEP: {:.2f}\n'
       '    Optimisation Duration: {}'
       .format(int(np.round(final_values.x[0], decimals=0)),
@@ -102,7 +117,8 @@ print('    n_estimators: {:.0f}\n'
               int(np.round(final_values.x[2], decimals=0)),
               final_values.fun,
               final_mse,
-              final_rmsre,
+              final_rmsre_train,
+              final_rmsre_test,
               time.strftime("%H:%M:%S", time.gmtime(elapsed_time))
               )
       )
