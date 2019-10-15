@@ -45,12 +45,12 @@ def labelling(data, lim_xc, lim_delc, mre=None, method='xc'):
     return data
 
 
-def splitting(data, type):
+def splitting(data, type, scaler=None):
     if type == 'Sequest':
         x_data = data[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
                        'A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
                        'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
-    elif type == 'QSRR':
+    elif type == 'Improved Sequest':
         x_data = data[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
                        'A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
                        'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V',
@@ -63,6 +63,8 @@ def splitting(data, type):
 
     # standardisation
     sc = StandardScaler()
+    if scaler is not None:
+        sc = scaler
     x_train = pd.DataFrame(sc.fit_transform(x_train_unscaled), columns=x_train_unscaled.columns)
     x_test = pd.DataFrame(sc.transform(x_test_unscaled), columns=x_test_unscaled.columns)
     x_data = pd.DataFrame(sc.transform(x_data), columns=x_data.columns)

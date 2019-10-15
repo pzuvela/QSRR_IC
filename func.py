@@ -29,15 +29,15 @@ def histplot(y_data, title, x_axis):
 
 
 def add_error(reg, rawdata, scaleddata):
-    # addition of error into data
-    x_data_reg = scaleddata[0][['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
-                                'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
+    # scaled data required as reg model worked with scaled data
+    x_data = scaleddata[0][['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
+                            'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
     y_data = scaleddata[1]['tR / min'].values
-    y_hat_all = reg.predict(x_data_reg)
 
-    re = 100 * np.abs((y_hat_all.ravel() - y_data) / y_data)
-
+    y_hat = reg.predict(x_data).ravel()
+    re = 100 * np.abs((y_hat - y_data) / y_data)
     rawdata.loc[:, 'error'] = re.ravel()
+
     return rawdata
 
 
@@ -54,40 +54,42 @@ def knee(x, y):
     return int(kneept)
 
 
-def updatetable(main_data, limxc, limdelc, models, i):
+def get_stats(main_data, limxc, limdelc, models):
     sc, sc2, clf, clf2, reg, mre, tr_max, reg_traindata = models
 
-    df_yproba1 = pd.DataFrame()
-    df_yhat = pd.DataFrame()
-    df_yproba2 = pd.DataFrame()
-
+    # Label for SEQUEST
     df = labelling(main_data, limxc, limdelc, method='delc')
     x_data = df[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
                  'A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
                  'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
     y_data = df[['tR / min', 'labels']]
 
+    # Scaling
     x_data = pd.DataFrame(sc.transform(x_data), columns=x_data.columns)
 
+    # SEQUEST Model
     x_data_clf = x_data[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp']]
     y_data_clf = y_data[['labels']].values.ravel()
     y_hat_proba1 = clf.predict_proba(x_data_clf)[:, 1].ravel()
 
+    # QSRR Model
     x_data_reg = x_data[['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
                          'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
     y_data_reg = y_data[['tR / min']].values.ravel()
     y_hat_reg = reg.predict(x_data_reg).ravel()
 
+    # Label for Improved SEQUEST
     df2 = add_error(reg, df, [x_data, y_data])
     df2 = labelling(df2, limxc, limdelc, mre=mre, method='mre')
 
+    # Scaling
     x_data2 = df2[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
                    'A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
                    'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V',
                    'error']]
-
     x_data2 = pd.DataFrame(sc2.transform(x_data2), columns=x_data2.columns)
 
+    # Improved SEQUEST Model
     x_data_clf2 = x_data2[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
                            'error']]
     y_data_clf2 = df2[['labels']].values.ravel()

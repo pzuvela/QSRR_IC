@@ -1,22 +1,17 @@
 import numpy as np
-import random as rand
-import pandas as pd
 from matplotlib import pyplot as plt
-from scipy.optimize import Bounds, minimize
-from sklearn.model_selection import KFold, cross_val_score
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.metrics import mean_squared_error, make_scorer, r2_score
-from func import knee, get_rmsre
+from xgboost import XGBRegressor
+from sklearn.metrics import r2_score
 from petar.ad import ad
 
 
-def regress_pls(traintestset, n_splits, imax, optimise=False, text=False):
-    x_train, x_test, y_train, y_test = traintestset
-    x_train = x_train.values
+def regress_pls(trset, reg_params=None):
+    x_train, x_test, y_train, y_test = trset
 
-    # Partial Least Squares (PLS) Method
-
+    # Partial Least Squares (PLS)
+    """
     if optimise is True:
         # Creating initial values
         print(' ')
@@ -28,20 +23,15 @@ def regress_pls(traintestset, n_splits, imax, optimise=False, text=False):
             # Initiate cross validation (CV) model
             pls_cv = PLSRegression(n_components=i)
 
-            # K-Fold Object
-            kf = KFold(n_splits=n_splits)
-
             # Pre-loading variables
             rmse_train = np.zeros(n_splits)
             rmse_test = np.zeros(n_splits)
             j = 0
 
-            # # Construct Scoring Object
-            # def rmse(y_true, y_pred):
-            #     return np.sqrt(np.square(100 * (y_pred - y_true) / y_true).mean())
-            # scorer = make_scorer(rmse, greater_is_better=False)
-            #
-            # rmse_test = cross_val_score(pls_cv, x_train, y_train, cv=kf, scoring=scorer)
+            # Construct Scoring Object
+            scorer = make_scorer(func.get_rmsre, greater_is_better=False)
+
+            rmse_test = cross_val_score(pls_cv, x_train, y_train, cv=KFold(n_splits=n_splits), scoring=scorer)
 
             for train_i, test_i in kf.split(x_train, y_train):
                 # Defining the training set
@@ -57,6 +47,7 @@ def regress_pls(traintestset, n_splits, imax, optimise=False, text=False):
 
                 # Generating RMSE
                 y_test_hat_cv = pls_cv.predict(x_test_cv).ravel()
+                rmse_test[j] = func.get_rmsre(y_test_cv, y_test_hat_cv)
                 rmse_test[j] = (np.sqrt(mean_squared_error(y_test_cv, y_test_hat_cv)))
                 # rmse_test[j] = 100 * np.sqrt(np.mean(np.square((y_test_hat_cv - y_test_cv) / y_test_cv)))
 
@@ -73,146 +64,54 @@ def regress_pls(traintestset, n_splits, imax, optimise=False, text=False):
         # Implementing optimised parameters
         # optstats = [nlvs, rmsecv, rmsee]
         optstats = [nlvs, rmsecv]
-        lvs = knee(nlvs, rmsecv)  # some code to find knee point
+        lvs = func.knee(nlvs, rmsecv)  # some code to find knee point
         print('    Optimised Lvs: {}'.format(lvs))
         print('    ------------ Completion of Optimisation -----------')
         print(' ')
     else:
         optstats = None
         lvs = 5
+    """
+    lvs = 5
+    model = PLSRegression(n_components=lvs)
+    if reg_params is not None:
+        model.set_params(**reg_params)
+    model.fit(x_train, y_train)
 
-    if text is True:
-        print('The number of nLVs used is {}'.format(lvs))
-    pls = PLSRegression(n_components=lvs)
-    pls.fit(x_train, y_train)
-    y_hat_test = pls.predict(x_test)
-    y_hat_train = pls.predict(x_train)
-    x_train = pd.DataFrame(x_train, columns=x_test.columns)
+    y_hat_test = model.predict(x_test).ravel()
+    y_hat_train = model.predict(x_train).ravel()
 
-    return pls, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test], optstats
+    return model, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test]
 
 
-def regress_gbr(traintestset, n_splits, optimise=False):
-    x_train, x_test, y_train, y_test = traintestset
+def regress_gbr(trset, reg_params=None):
+    x_train, x_test, y_train, y_test = trset
 
     # Gradient Boosting Regressor
-    gbr = GradientBoostingRegressor()
+    model = GradientBoostingRegressor()
+    if reg_params is not None:
+        model.set_params(**reg_params)
+    model.fit(x_train, y_train)
 
-    if optimise is True:
-        print(' ')
-        print('    --- Commencing Optimisation of Regression Model ---')
+    y_hat_train = model.predict(x_train).ravel()
+    y_hat_test = model.predict(x_test).ravel()
 
-        def fun(x):
-            # Descaling Parameters
-            n_est = int(np.round(np.exp(x[0]), decimals=0))
-            min_sam = int(np.round(np.exp(x[1]), decimals=0))
-            lr = x[2] ** 2
-            max_depth = int(np.round(np.exp(x[3]), decimals=0))
-            print(n_est, min_sam, lr, max_depth)
-            opt_gbr = GradientBoostingRegressor(n_estimators=n_est,
-                                                min_samples_split=min_sam,
-                                                learning_rate=lr,
-                                                max_depth=max_depth)
-
-            # K-Fold object
-            kfold = KFold(n_splits=n_splits)
-
-            # Scoring object
-            scorer = make_scorer(get_rmsre, greater_is_better=False)
-            # CV score
-            score = cross_val_score(opt_gbr, x_train, y_train, cv=kfold, scoring='neg_mean_squared_error')
-            print(np.mean(score))
-
-            return np.mean(score)
-
-        def constr_fun(x):
-            c = (np.exp(x[0]) / x[2]**2) - x[4]
-            return c
-
-        # Creating bounds
-        n_est_min, n_est_max = 50, 500
-        min_sam_min, min_sam_max = 2, 10
-        lr_min, lr_max = 0.01, 0.99
-        max_depth_min, max_depth_max = 1, 5
-        bounds = Bounds([np.log(n_est_min), np.log(min_sam_min), np.sqrt(lr_min), np.log(max_depth_min),
-                         n_est_min / lr_min],
-                        [np.log(n_est_max), np.log(min_sam_max), np.sqrt(lr_max), np.log(max_depth_max),
-                         n_est_max / lr_max])
-
-        # Pre-loading initial values
-        n_est0 = np.log(rand.uniform(n_est_min, n_est_max))
-        min_sam0 = np.log(rand.uniform(min_sam_min, min_sam_max))
-        lr0 = np.sqrt(rand.uniform(lr_min, lr_max))
-        max_depth0 = np.log(rand.uniform(max_depth_min, max_depth_max))
-        k0 = rand.uniform(n_est_min / lr_min, n_est_max / lr_max)
-        initial = np.array([n_est0, min_sam0, lr0, max_depth0, k0])
-        print('    ---------------- Initial Parameters ---------------')
-        print('    n_estimators: {:.0f}\n'
-              '    min_sample_split: {:.0f}\n'
-              '    learning_rate: {:.2f} \n'
-              '    max_depth: {:.0f}'
-              .format(np.exp(n_est0), np.exp(min_sam0), np.square(lr0), np.exp(max_depth0))
-              )
-        print('    ---------------------------------------------------')
-
-        # Begin Optimisation
-        opt = minimize(fun, initial, method='trust-constr', constraints={'fun': constr_fun, 'type': 'eq'},
-                       bounds=bounds, options={'maxiter': 100, 'disp': True})
-        x_dict = {'n_estimators': int(np.round(np.exp(opt.x[0]), decimals=0)),
-                  'min_samples_split': int(np.round(np.exp(opt.x[1]), decimals=0)),
-                  'learning_rate': np.square(opt.x[2]),
-                  'max_depth': int(np.round(np.exp(opt.x[3]), decimals=0))
-                  }
-
-        # Implementing optimised parameters
-        gbr.set_params(**x_dict)
-
-        print('    ----------------- Final Parameters ----------------')
-        print('    n_estimators: {:.0f}\n'
-              '    min_sample_split: {:.0f}\n'
-              '    learning_rate: {:.2f} \n'
-              '    max_depth: {:.0f}\n'
-              '    Final CV-RMSE: {:.2f}'
-              .format(np.exp(opt.x[0]), np.exp(opt.x[1]), np.square(opt.x[2]), np.exp(opt.x[3]), opt.fun)
-              )
-        print('    ---------------------------------------------------')
-        print('    ------------ Completion of Optimisation -----------')
-        print(' ')
-
-    gbr.fit(x_train, y_train)
-    y_hat_train = gbr.predict(x_train)
-    y_hat_test = gbr.predict(x_test)
-
-    return gbr, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test], None
+    return model, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test]
 
 
-def regress_stats(traindata, testdata, text=False):
-    if traindata is not None:
-        x_train, y_train, y_hat_train = traindata
-        msre_train = np.square(100 * (y_hat_train - y_train) / y_train).mean()
-        rmsre_train = np.sqrt(msre_train)
+def regress_xgbr(trset, reg_params=None):
+    x_train, x_test, y_train, y_test = trset
 
-        x_test, y_test, y_hat_test = testdata
-        msre_test = np.square(100 * (y_hat_test - y_test) / y_test).mean()
-        rmsre_test = np.sqrt(msre_test)
-        # Printing metrics
-        if text is True:
-            print('------------- Regression Model Stats --------------')
-            print('The training RMSRE is {:.2f}%'.format(rmsre_train))
-            print('The testing RMSRE is {:.2f}%'.format(rmsre_test))
-            print('--------------- End of Statistics -----------------')
-        return rmsre_train, rmsre_test
-    else:
-        x_test, y_test, y_hat_test = testdata
-        msre_test = np.square(100 * (y_hat_test - y_test) / y_test).mean()
-        rmsre_test = np.sqrt(msre_test)
+    # eXtreme Gradient Boosting Regressor
+    model = XGBRegressor(objective="reg:squarederror")
+    if reg_params is not None:
+        model.set_params(**reg_params)
+    model.fit(x_train, y_train)
 
-        # Printing metrics
-        if text is True:
-            print('------------- Regression Model Stats --------------')
-            print('The testing RMSRE is {:.2f}%'.format(rmsre_test))
-            print('--------------- End of Statistics -----------------')
-        return rmsre_test
+    y_hat_train = model.predict(x_train).ravel()
+    y_hat_test = model.predict(x_test).ravel()
+
+    return model, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test]
 
 
 def regress_plot(teststat, trainstat=None, optstat=None):

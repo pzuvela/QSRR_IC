@@ -1,127 +1,70 @@
 import pandas as pd
 import numpy as np
-import random as rand
 from matplotlib import pyplot as plt
+from xgboost import XGBClassifier
 from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.metrics import confusion_matrix, make_scorer, roc_auc_score
-from sklearn.model_selection import GridSearchCV, KFold, cross_val_score
-from scipy.optimize import minimize, Bounds
+from sklearn.metrics import confusion_matrix
 
 
-# classification
-def classify(traintestset, n_splits, optimise=False):
-    x_train, x_test, y_train, y_test = traintestset
+def classify_gbc(labelset, label_params=None):
+    x_train, x_test, y_train, y_test = labelset
 
-    # GBC model
-    clf = GradientBoostingClassifier()
+    # GradientBoostingClassifer model
+    model = GradientBoostingClassifier()
+    if label_params is not None:
+        clf = GradientBoostingClassifier(**label_params)
+    model.fit(x_train, y_train)
 
-    if optimise is True:
-        print('')
-        print('    - Commencing Optimisation of Classification Model -')
+    y_hat_train = model.predict(x_train)
+    y_hat_test = model.predict(x_test)
+    feature_importance = model.feature_importances_
 
-        def fun(x):
-            # Descaling Parameters
-            n_est = int(np.round(np.exp(x[0]), decimals=0))
-            min_sam = int(np.round(np.exp(x[1]), decimals=0))
-            lr = x[2] ** 2
-            max_depth = int(np.round(np.exp(x[3]), decimals=0))
-
-            opt_clf = GradientBoostingClassifier(n_estimators=n_est,
-                                                 min_samples_split=min_sam,
-                                                 learning_rate=lr,
-                                                 max_depth=max_depth)
-
-            # K-Fold object
-            kfold = KFold(n_splits=n_splits)
-            # Scoring object
-            scorer = make_scorer(roc_auc_score)
-            # CV score
-            score = cross_val_score(opt_clf, x_train, y_train, cv=kfold, scoring=scorer)
-
-            return -np.mean(score)
-
-        # Creating bounds
-        n_est_min, n_est_max = 100, 1000
-        min_sam_min, min_sam_max = 5, 50
-        lr_min, lr_max = 0.01, 0.1
-        max_depth_min, max_depth_max = 1, 5
-        bounds = Bounds([np.log(n_est_min), np.log(min_sam_min), np.sqrt(lr_min), np.log(max_depth_min)],
-                        [np.log(n_est_max), np.log(min_sam_max), np.sqrt(lr_max), np.log(max_depth_max)])
-
-        # Pre-loading initial values
-        n_est0 = np.log(rand.uniform(n_est_min, n_est_max))
-        min_sam0 = np.log(rand.uniform(min_sam_min, min_sam_max))
-        lr0 = np.sqrt(rand.uniform(lr_min, lr_max))
-        max_depth0 = np.log(rand.uniform(max_depth_min, max_depth_max))
-        initial = np.array([n_est0, min_sam0, lr0, max_depth0])
-        print('    ---------------- Initial Parameters ---------------')
-        print('    n_estimators: {:.0f}\n'
-              '    min_sample_split: {:.0f}\n'
-              '    learning_rate: {:.2f} \n'
-              '    max_depth: {:.0f}'
-              .format(np.exp(n_est0), np.exp(min_sam0), np.square(lr0), np.exp(max_depth0))
-              )
-        print('    ---------------------------------------------------')
-
-        # Begin Optimisation
-        opt = minimize(fun, initial, method='trust-constr', bounds=bounds, options={'maxiter': 100})
-        x_dict = {'n_estimators': int(np.round(np.exp(opt.x[0]), decimals=0)),
-                  'min_samples_split': int(np.round(np.exp(opt.x[1]), decimals=0)),
-                  'learning_rate': np.square(opt.x[2]),
-                  'max_depth': int(np.round(np.exp(opt.x[3]), decimals=0))
-                  }
-
-        # Implementing optimised parameters
-        clf.set_params(**x_dict)
-
-        print('    ----------------- Final Parameters ----------------')
-        print('    n_estimators: {:.0f}\n'
-              '    min_sample_split: {:.0f}\n'
-              '    learning_rate: {:.2f} \n'
-              '    max_depth: {:.0f}\n'
-              '    Final CV-ROC: {:.2f}'
-              .format(np.exp(opt.x[0]), np.exp(opt.x[1]), np.square(opt.x[2]), np.exp(opt.x[3]), -opt.fun)
-              )
-        print('    ---------------------------------------------------')
-        print('    ------------ Completion of Optimisation -----------')
-        print(' ')
-
-    clf.fit(x_train, y_train)
-    y_hat_train = clf.predict(x_train)
-    y_hat_test = clf.predict(x_test)
-
-    feature_importance = clf.feature_importances_
-    y_hat_proba = clf.predict_proba(x_test)[:, 1]
-
-    return [clf, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test, y_hat_proba], [feature_importance]]
+    return model, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test], [feature_importance]
 
 
-"""
-        # K-Fold object
-        kf = KFold(n_splits=n_splits)
+def classify_xgbc(labelset, label_params=None):
+    x_train, x_test, y_train, y_test = labelset
 
-        # Parameter grid
-        param_grid = {'learning_rate': np.linspace(0.001, 0.1, step),
-                      'n_estimators': np.linspace(10, 1000, step, dtype='int'),
-                      'min_samples_split': np.linspace(5, 50, step, dtype='int'),
-                      'max_depth': np.linspace(1, 10, step, dtype='int')
-                      }
-        clf_cv = GridSearchCV(clf, cv=kf, param_grid=param_grid)
+    # GradientBoostingClassifer model
+    model = XGBClassifier()
+    if label_params is not None:
+        model = XGBClassifier(**label_params)
+    model.fit(x_train, y_train)
 
-        clf_cv.fit(x_train, y_train)
+    y_hat_train = model.predict(x_train)
+    y_hat_test = model.predict(x_test)
+    feature_importance = model.feature_importances_
 
-        clf.set_params(**clf_cv.best_params_)
-
-        clf.fit(x_train, y_train)
-
-        # clf.fit(x_train, y_train)
-        y_testpred = clf.predict(x_test)
-
-"""
+    return model, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test], [feature_importance]
 
 
-def classify_plot(testdata, optdata):
-    x_test, y_test, y_hat_test, y_hat_testproba = testdata
+def classify_stats(data, title=None):  # title should be a string
+    x_test, y_test, y_hat_test = data
+
+    # clf model statistics
+    cm = confusion_matrix(y_test, y_hat_test)
+    table = pd.DataFrame(cm, columns=['pred_neg', 'pred_pos'], index=['neg', 'pos'])
+    tn, fp, fn, tp = cm.ravel()
+    acc = (tp + tn) / (tn + fp + fn + tp)
+    sens = tp / (tp + fn)  # also known as recall
+    spec = tn / (tn + fp)
+    mcc = ((tp * tn) - (fp * fn)) / ((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)) ** 0.5
+
+    if title is not None:
+        print('----------- Classification Model Stats ------------')
+        print(table)
+        print('{} Model'
+              'Accuracy: {:.2f}\n'
+              'Sensitivity: {:.2f}\n'
+              'Specificity: {:.2f}\n'
+              'Matthews CC: {:.2f}'.format(title, acc, sens, spec, mcc))
+        print('--------------- End of Statistics -----------------')
+
+    return acc, sens, spec, mcc
+
+
+def classify_plot(testdata):
+    x_test, y_test, y_hat_test = testdata
     feature_importance = optdata
 
     if feature_importance is not None:
@@ -153,71 +96,3 @@ def classify_plot(testdata, optdata):
     ax5.set_title('Prediction Probability Distribution')
     ax5.set_ylabel('Prediction Probability')
     ax5.plot(lim1, lim2, c='k')
-
-
-def classify_stats(traindata, testdata, text=False):
-    if traindata is None:
-        x_test, y_test, y_hat_test, y_hat_testproba = testdata
-
-        # clf model statistics
-        cm = confusion_matrix(y_test, y_hat_test)
-        table = pd.DataFrame(cm, columns=['pred_neg', 'pred_pos'], index=['neg', 'pos'])
-        tn, fp, fn, tp = cm.ravel()
-        acc_test = (tp + tn) / (tn + fp + fn + tp)
-        sens_test = tp / (tp + fn)  # also known as recall
-        spec_test = tn / (tn + fp)
-        mcc_test = ((tp * tn) - (fp * fn)) / ((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)) ** 0.5
-
-        # plotting Metrics stats
-        if text is True:
-            print('----------- Classification Model Stats ------------')
-            print(table)
-            print('Accuracy: {:.2f}\n'
-                  'Sensitivity: {:.2f}\n'
-                  'Specificity: {:.2f}\n'
-                  'Matthews CC: {:.2f}'.format(acc, sens, spec, mcc))
-            print('--------------- End of Statistics -----------------')
-
-        return acc_test, sens_test, spec_test, mcc_test
-    else:
-        x_test, y_test, y_hat_test, y_hat_testproba = testdata
-
-        cm_test = confusion_matrix(y_test, y_hat_test)
-        tn, fp, fn, tp = cm_test.ravel()
-        acc_test = (tp + tn) / (tn + fp + fn + tp)
-        sens_test = tp / (tp + fn)  # also known as recall
-        spec_test = tn / (tn + fp)
-        mcc_test = ((tp * tn) - (fp * fn)) / ((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)) ** 0.5
-
-        x_train, y_train, y_hat_train = traindata
-        cm_train = confusion_matrix(y_train, y_hat_train)
-        tn, fp, fn, tp = cm_train.ravel()
-        acc_train = (tp + tn) / (tn + fp + fn + tp)
-        sens_train = tp / (tp + fn)  # also known as recall
-        spec_train = tn / (tn + fp)
-        mcc_train = ((tp * tn) - (fp * fn)) / ((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)) ** 0.5
-
-        return acc_train, sens_train, spec_train, mcc_train, acc_test, sens_test, spec_test, mcc_test
-
-
-def add_status(gbc, data, scaleddata, name):
-    x_data = scaleddata[0]
-    y_data = scaleddata[1]['labels'].values
-    y_pred = gbc.predict(x_data)
-
-    label = 'status_{}'.format(name)
-    status = []
-
-    for i in range(len(y_data)):
-        if y_data[i] == 1 and y_pred[i] == 1:
-            status.append('tp')
-        elif y_data[i] == 0 and y_pred[i] == 1:
-            status.append('fp')
-        elif y_data[i] == 0 and y_pred[i] == 0:
-            status.append('tn')
-        elif y_data[i] == 1 and y_pred[i] == 0:
-            status.append('fn')
-
-    data.loc[:, label] = status
-
-    return data
