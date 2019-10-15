@@ -77,7 +77,7 @@ def splitting(data, type, scaler=None):
                                'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
         x_test_reg = x_test[['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
                              'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
-    elif type == 'QSRR':
+    elif type == 'Improved Sequest':
         x_train_clf = x_train[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp', 'error']]
         x_test_clf = x_test[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp', 'error']]
         x_train_reg = x_train[['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',

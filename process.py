@@ -2,8 +2,8 @@
 import pandas as pd
 import func
 from preprocessing import labelling, splitting, data_restrict
-from classification import classify_xgbc, classify_stats, classify_plot
-from regression import regress_pls, regress_plot, regress_gbr, regress_stats, regress_xgbr
+from classification import classify_xgbc, classify_stats
+from regression import regress_pls, regress_gbr, regress_xgbr
 
 
 def traintest(modeldata, limxc, limdelc, clf_params=None, reg_params=None):
@@ -32,12 +32,12 @@ def traintest(modeldata, limxc, limdelc, clf_params=None, reg_params=None):
     scaled_data2, labelset2, trset2, sc2, tr_max2 = splitting(df2, 'Improved Sequest')
 
     # Improved SEQUEST Model
-    clf2, clf_traindata2, clf_testdata2 = classify_xgbc(labelset2)
+    clf2, clf_traindata2, clf_testdata2, _ = classify_xgbc(labelset2)  # feature importance is muted for now
     acc_train2, sens_train2, spec_train2, mcc_train2 = classify_stats(clf_traindata2)
     acc_test2, sens_test2, spec_test2, mcc_test2 = classify_stats(clf_testdata2)
 
     # Collation of Statistics
-    modeldata = (sc, sc2, clf, clf2, reg, mre_train)
+    model = (sc, sc2, clf, clf2, reg, mre_train)
     stats = (acc_train1, sens_train1, spec_train1, mcc_train1,
              rmsre_train,
              acc_train2, sens_train2, spec_train2, mcc_train2,
@@ -45,7 +45,7 @@ def traintest(modeldata, limxc, limdelc, clf_params=None, reg_params=None):
              rmsre_test,
              acc_test2, sens_test2, spec_test2, mcc_test2)
 
-    return modeldata, stats
+    return model, stats
 
 
 def validate(validationdata, models, limxc, limdelc):
