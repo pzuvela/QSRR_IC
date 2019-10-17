@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 from scipy.stats import norm
@@ -17,6 +18,11 @@ def get_rmsre(y_data, y_hat):
 def get_mcc(y_data, y_hat):
     tn, fp, fn, tp = confusion_matrix(y_data, y_hat).ravel()
     return ((tp * tn) - (fp * fn)) / ((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)) ** 0.5
+
+
+def fileprint(string, directory):
+    with open(os.getcwd() + '{}.txt'.format(directory), 'a') as f:
+        print(string, file=f)
 
 
 def histplot(y_data, title, x_axis):

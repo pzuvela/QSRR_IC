@@ -24,6 +24,15 @@ proc_i = 15
 limxc = [1.9, 2.2, 3.75]
 limdelc = 0.08
 n_splits = 5
+direct = '/results/session_data_{}iters.txt'.format(max_iter)
+
+func.fileprint('------------------- Session Data ------------------\n'
+               'Iterations: {}\n'
+               'X correlation limits: {}\n'
+               'Delta Cn limit: {}\n'
+               'Kfold splits: {}\n'
+               .format(max_iter, limxc, limdelc, n_splits),
+               directory=direct)
 
 # Optimisation procedure
 if input('Initiate Optimisation? (Y/N)\n').lower() == 'y':
@@ -32,7 +41,11 @@ if input('Initiate Optimisation? (Y/N)\n').lower() == 'y':
 
 # SEQUEST Optimisation
     print('    --------------- SEQUEST Optimisation --------------')
-    x_train, x_test, y_train, y_test = trset
+    func.fileprint('Optimisation Selected\n\n'
+                   '    --------------- SEQUEST Optimisation --------------',
+                   directory=direct)
+
+    x_train, x_test, y_train, y_test = labelset
     clf = XGBClassifier().fit(x_train, y_train)
 
     # Initial Params
@@ -43,20 +56,21 @@ if input('Initiate Optimisation? (Y/N)\n').lower() == 'y':
     initial_mcc_test = func.get_mcc(y_test, y_hat)
     clfopt_start = time.time()
 
-    print('    ---------------- Initial Parameters ---------------')
-    print('    n_estimators: {:.0f}\n'
-          '    learning_rate: {:.2f} \n'
-          '    max_depth: {:.0f}\n'
-          '    Initial MCC-Train: {:.2f}'
-          '    Initial MCC-Test: {:.2f}'
-          .format(initial['n_estimators'],
-                  initial['learning_rate'],
-                  initial['max_depth'],
-                  initial_mcc_train,
-                  initial_mcc_test
-                  )
-          )
-    print('    ---------------------------------------------------')
+    toprint = '    ---------------- Initial Parameters ---------------\n'\
+              '    n_estimators: {:.0f}\n'\
+              '    learning_rate: {:.2f} \n'\
+              '    max_depth: {:.0f}\n'\
+              '    Initial MCC-Train: {:.2f}'\
+              '    Initial MCC-Test: {:.2f}\n'\
+              '    ---------------------------------------------------'\
+              .format(initial['n_estimators'],
+                      initial['learning_rate'],
+                      initial['max_depth'],
+                      initial_mcc_train,
+                      initial_mcc_test
+                      )
+    print(toprint)
+    func.fileprint(toprint, directory=direct)
 
     # Creating optimisation function, needs to be in each
     def clf_objective(x):
@@ -71,7 +85,7 @@ if input('Initiate Optimisation? (Y/N)\n').lower() == 'y':
         scorer = make_scorer(func.get_mcc)
         score = cross_val_score(opt_model, x_train, y_train, cv=KFold(n_splits=n_splits), scoring=scorer)
 
-        return np.mean(score)
+        return -np.mean(score)
 
 
     # Creating bounds
@@ -96,27 +110,30 @@ if input('Initiate Optimisation? (Y/N)\n').lower() == 'y':
     final_mcc_test = func.get_mcc(y_test, y_hat)
     clfopt_time = time.time() - clfopt_start
 
-    print('    ----------------- Final Parameters ----------------')
-    print('    n_estimators: {:.0f}\n'
-          '    learning_rate: {:.2f} \n'
-          '    max_depth: {:.0f}\n'
-          '    Final CV-MCC: {:.3f}\n'
-          '    Final MCC-Train: {:.2f}'
-          '    Final MCC-Test: {:.2f}\n'
-          '    Optimisation Duration: {}'
-          .format(int(np.round(final_values.x[0], decimals=0)),
-                  final_values.x[1],
-                  int(np.round(final_values.x[2], decimals=0)),
-                  final_values.fun,
-                  final_mcc_train,
-                  final_mcc_test,
-                  time.strftime("%H:%M:%S", time.gmtime(clfopt_time))
-                  )
-          )
-    print('    ---------------------------------------------------\n')
+    toprint = '    ----------------- Final Parameters ----------------\n' \
+              '    n_estimators: {:.0f}\n'\
+              '    learning_rate: {:.2f} \n'\
+              '    max_depth: {:.0f}\n'\
+              '    Final CV-MCC: {:.3f}\n'\
+              '    Final MCC-Train: {:.2f}'\
+              '    Final MCC-Test: {:.2f}\n'\
+              '    Optimisation Duration: {}\n'\
+              '    ---------------------------------------------------\n'\
+              .format(int(np.round(final_values.x[0], decimals=0)),
+                      final_values.x[1],
+                      int(np.round(final_values.x[2], decimals=0)),
+                      final_values.fun,
+                      final_mcc_train,
+                      final_mcc_test,
+                      time.strftime("%H:%M:%S", time.gmtime(clfopt_time))
+                      )
+    print(toprint)
+    func.fileprint(toprint, directory=direct)
 
 # QSRR Optimisation
     print('    ----------------- QSRR Optimisation ---------------')
+    func.fileprint('    ----------------- QSRR Optimisation ---------------',
+                   directory=direct)
     x_train, x_test, y_train, y_test = trset
     reg = XGBRegressor(objective="reg:squarederror").fit(x_train, y_train)
 
@@ -128,20 +145,22 @@ if input('Initiate Optimisation? (Y/N)\n').lower() == 'y':
     initial_rmsre_test = func.get_rmsre(y_test, y_hat)
     regopt_start = time.time()
 
-    print('    ---------------- Initial Parameters ---------------')
-    print('    n_estimators: {:.0f}\n'
-          '    learning_rate: {:.2f} \n'
-          '    max_depth: {:.0f}\n'
-          '    Initial %RMSEE: {:.2f}%'
-          '    Initial %RMSEP: {:.2f}%'
-          .format(initial['n_estimators'],
-                  initial['learning_rate'],
-                  initial['max_depth'],
-                  initial_rmsre_train,
-                  initial_rmsre_test
-                  )
-          )
-    print('    ---------------------------------------------------')
+    toprint = '    ---------------- Initial Parameters ---------------\n'\
+              '    n_estimators: {:.0f}\n'\
+              '    learning_rate: {:.2f} \n'\
+              '    max_depth: {:.0f}\n'\
+              '    Initial %RMSEE: {:.2f}%'\
+              '    Initial %RMSEP: {:.2f}%\n'\
+              '    ---------------------------------------------------'\
+              .format(initial['n_estimators'],
+                      initial['learning_rate'],
+                      initial['max_depth'],
+                      initial_rmsre_train,
+                      initial_rmsre_test
+                      )
+
+    print(toprint)
+    func.fileprint(toprint, directory=direct)
 
     # Creating optimisation function, needs to be in each
     def reg_objective(x):
@@ -181,25 +200,27 @@ if input('Initiate Optimisation? (Y/N)\n').lower() == 'y':
     final_rmsre_test = func.get_rmsre(y_test, y_hat)
     regopt_time = time.time() - regopt_start
 
-    print('    ----------------- Final Parameters ----------------')
-    print('    n_estimators: {:.0f}\n'
-          '    learning_rate: {:.2f} \n'
-          '    max_depth: {:.0f}\n'
-          '    Final %RMSECV: {:.3f}%\n'
-          '    Final %RMSEE: {:.2f}%'
-          '    Final %RMSEP: {:.2f}%\n'
-          '    Optimisation Duration: {}'
-          .format(int(np.round(final_values.x[0], decimals=0)),
-                  final_values.x[1],
-                  int(np.round(final_values.x[2], decimals=0)),
-                  final_values.fun,
-                  final_rmsre_train,
-                  final_rmsre_test,
-                  time.strftime("%H:%M:%S", time.gmtime(regopt_time))
-                  )
-          )
-    print('    ---------------------------------------------------')
+    toprint = '    ----------------- Final Parameters ----------------\n'\
+              '    n_estimators: {:.0f}\n'\
+              '    learning_rate: {:.2f} \n'\
+              '    max_depth: {:.0f}\n'\
+              '    Final %RMSECV: {:.3f}%\n'\
+              '    Final %RMSEE: {:.2f}%'\
+              '    Final %RMSEP: {:.2f}%\n'\
+              '    Optimisation Duration: {}\n'\
+              '    ---------------------------------------------------\n'\
+              .format(int(np.round(final_values.x[0], decimals=0)),
+                      final_values.x[1],
+                      int(np.round(final_values.x[2], decimals=0)),
+                      final_values.fun,
+                      final_rmsre_train,
+                      final_rmsre_test,
+                      time.strftime("%H:%M:%S", time.gmtime(regopt_time))
+                      )
+    print(toprint)
+    func.fileprint(toprint, directory=direct)
 else:
+    func.fileprint('Optimisation not selected', directory=direct)
     clfopt_time = 0
     regopt_time = 0
     clf_params = None
@@ -207,7 +228,7 @@ else:
 
 
 def parallel_model(arg_iter):
-    modeldata, validationdata = train_test_split(rawdata, test_size=0.3, shuffle=True, random_state=2)
+    modeldata, validationdata = train_test_split(rawdata, test_size=0.3, shuffle=True)
     modeldata = modeldata.reset_index()
     validationdata = validationdata.reset_index()
 
@@ -234,6 +255,8 @@ def parallel_model(arg_iter):
 # Execute parallelized optimization only if the file is ran as a main file
 if __name__ == '__main__':
     print('Initiating Resampling for {} iterations'.format(max_iter))
+    func.fileprint('Initiating Resampling for {} iterations'.format(max_iter), directory=direct)
+
     iter_start = time.time()
 
     # Start parallel pool for multiprocessing (processes=number of threads)
@@ -267,15 +290,22 @@ if __name__ == '__main__':
 
     # Generating predictions
     func.add_true_mean_std(y_true_label, pd.DataFrame(y_proba1)
-                           ).to_csv('results/sequest_predictedprobability1_{}iters.csv'.format(max_iter), header=True)
+                           ).to_csv('results/sequest_probabilities_{}iters.csv'.format(max_iter), header=True)
     func.add_true_mean_std(y_true_tr, pd.DataFrame(y_hat_reg)
                            ).to_csv('results/qsrr_trprediction_{}iters.csv'.format(max_iter), header=True)
     func.add_true_mean_std(y_true_label, pd.DataFrame(y_proba2)
-                           ).to_csv('results/both_predictedprobability2_{}iters.csv'.format(max_iter), header=True)
+                           ).to_csv('results/improvedsequest_probabilities_{}iters.csv'.format(max_iter), header=True)
 
     resampl_time = time.time() - iter_start
     total_time = time.time() - start_time
 
-    print('Total Optimisation Duration: {}'.format(time.strftime("%H:%M:%S", time.gmtime(clfopt_time+regopt_time))))
+    print('Optimisation Duration: {}'.format(time.strftime("%H:%M:%S", time.gmtime(clfopt_time+regopt_time))))
     print('Resampling Duration: {}'.format(time.strftime("%H:%M:%S", time.gmtime(resampl_time))))
     print('Total Duration: {}'.format(time.strftime("%H:%M:%S", time.gmtime(total_time))))
+
+    func.fileprint('Optimisation Duration: {}'.format(time.strftime("%H:%M:%S", time.gmtime(clfopt_time+regopt_time))),
+                   directory=direct)
+    func.fileprint('Resampling Duration: {}'.format(time.strftime("%H:%M:%S", time.gmtime(resampl_time))),
+                   directory=direct)
+    func.fileprint('Total Duration: {}'.format(time.strftime("%H:%M:%S", time.gmtime(total_time))),
+                   directory=direct)
