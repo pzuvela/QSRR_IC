@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
-from scipy.stats import norm, mode
+from scipy.stats import norm
+from sklearn.metrics import confusion_matrix
 from matplotlib import pyplot as plt
 from preprocessing import labelling
 
@@ -11,6 +12,11 @@ def get_mre(y_data, y_hat):
 
 def get_rmsre(y_data, y_hat):
     return np.sqrt(np.square(100 * (y_hat - y_data) / y_data).mean())
+
+
+def get_mcc(y_data, y_hat):
+    tn, fp, fn, tp = confusion_matrix(y_data, y_hat).ravel()
+    return ((tp * tn) - (fp * fn)) / ((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)) ** 0.5
 
 
 def histplot(y_data, title, x_axis):
