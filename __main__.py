@@ -1,17 +1,18 @@
+import os
+import sys
 import time
+import func
 import datetime
 import numpy as np
 import pandas as pd
-import os
-import func
 
-from process import traintest, validate
-from scipy import optimize as opt
-from sklearn.model_selection import train_test_split, cross_val_score, KFold
-from sklearn.metrics import make_scorer
-from xgboost import XGBRegressor, XGBClassifier
 from multiprocessing import Pool
+from scipy import optimize as opt
+from process import traintest, validate
 from preprocessing import labelling, splitting
+from xgboost import XGBRegressor, XGBClassifier
+from sklearn.metrics import make_scorer
+from sklearn.model_selection import train_test_split, cross_val_score, KFold
 
 start_time = time.time()
 rawdata = pd.read_csv(os.getcwd() + '/data/model_protein.csv')
@@ -26,13 +27,23 @@ limxc = [1.9, 2.2, 3.75]
 limdelc = 0.08
 n_splits = 5
 model = 'xgb'  # to be made into a selecting factor for the models in the future
-opt_prompt = int(input('Initiate Optimisation? (1/0)\n'))
+try:
+    opt_prompt = int(input('Initiate Optimisation? (1/0)\n'))
+except ValueError:
+    print('Please enter 1 (for YES) or 0 (for NO) only.')
+    sys.exit()
 prompt = ['', '_opt']
+
 # Pre-loading Directories
-path = os.getcwd() + '/results/{}_{:.0f}kiters_{}{}'.format(datetime.datetime.now().strftime('%Y%m%d_%H:%M'),
+try:
+    path = os.getcwd() + '/results/{}_{:.0f}kiters_{}{}'.format(datetime.datetime.now().strftime('%Y%m%d_%H%M'),
                                                             max_iter / 1000, model, prompt[opt_prompt])
-if not os.path.lexists(path):
-    os.mkdir(path)
+    if not os.path.lexists(path):
+        os.mkdir(path)
+except IndexError:
+    print('Please enter 1 (for YES) or 0 (for NO) only.')
+    sys.exit()
+
 session_dir = path + '/session_data.txt'
 metric_dir = path + '/iteration_metrics.csv'
 sequest_dir = path + '/sequest_probabiity.csv'
@@ -44,7 +55,8 @@ func.fileprint('------------------- Session Data ------------------\n'
                'X correlation limits: {}\n'
                'Delta Cn limit: {}\n'
                'Kfold splits: {}\n'
-               .format(max_iter, limxc, limdelc, n_splits),
+               'Model Used: {}'
+               .format(max_iter, limxc, limdelc, n_splits, model.upper()),
                directory=session_dir)
 
 # Optimisation procedure
@@ -233,7 +245,7 @@ if opt_prompt == 1:
     print(toprint)
     func.fileprint(toprint, directory=session_dir)
 else:
-    func.fileprint('Optimisation not selected', directory=session_dir)
+    func.fileprint('Optimisation not selected\n', directory=session_dir)
     clfopt_time = 0
     regopt_time = 0
     clf_params = None
@@ -242,8 +254,8 @@ else:
 
 def parallel_model(arg_iter):
     modeldata, validationdata = train_test_split(rawdata, test_size=0.3, shuffle=True)
-    # modeldata = modeldata.reset_index()
-    # validationdata = validationdata.reset_index()
+    modeldata = modeldata.reset_index()
+    validationdata = validationdata.reset_index()
 
     models, stats = traintest(modeldata, limxc, limdelc, clf_params, reg_params)
     # stats is in the following format: acc, sens, spec, mcc,    for sequest
