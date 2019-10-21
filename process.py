@@ -11,13 +11,13 @@ def traintest(modeldata, limxc, limdelc, clf_params=None, reg_params=None):
     df = labelling(modeldata, limxc, limdelc, method='delc')
     scaled_data, labelset, trset, sc, tr_max = splitting(df, 'Sequest')
 
-    # SEQUEST Model (currently choice between gbc/xgbc)
+    # SEQUEST Model (currently available choice: gbc/xgbc)
     # clf, clf_traindata, clf_testdata, _ = classify_gbc(labelset, clf_params)  # feature importance is muted for now
     clf, clf_traindata, clf_testdata, _ = classify_xgbc(labelset, clf_params)  # feature importance is muted for now
     acc_train1, sens_train1, spec_train1, mcc_train1 = classify_stats(clf_traindata)
     acc_test1, sens_test1, spec_test1, mcc_test1 = classify_stats(clf_testdata)
 
-    # QSRR Model (currently choice between pls/gbr/xgbr)
+    # QSRR Model (currently available choice: pls/gbr/xgbr)
     # reg, reg_traindata, reg_testdata = regress_pls(trset, reg_params)
     # reg, reg_traindata, reg_testdata = regress_gbr(trset, reg_params)
     reg, reg_traindata, reg_testdata = regress_xgbr(trset, reg_params)

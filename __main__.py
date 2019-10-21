@@ -1,4 +1,5 @@
 import time
+import datetime
 import numpy as np
 import pandas as pd
 import os
@@ -19,12 +20,24 @@ rawdata = pd.read_csv(os.getcwd() + '/data/model_protein.csv')
 # validationdata = pd.read_csv(os.getcwd() + '/data/Bacillus_subtilis_sp.csv')
 # validationdata = pd.read_csv(os.getcwd() + '/data/Bacillus_subtilis_deltaPrpE.csv')
 
-max_iter = 10000
+max_iter = 100
 proc_i = 15
 limxc = [1.9, 2.2, 3.75]
 limdelc = 0.08
 n_splits = 5
-direct = '/results/session_data_{}iters.txt'.format(max_iter)
+model = 'xgb'  # to be made into a selecting factor for the models in the future
+opt_prompt = int(input('Initiate Optimisation? (1/0)\n'))
+prompt = ['', '_opt']
+# Pre-loading Directories
+path = os.getcwd() + '/results/{}_{:.0f}kiters_{}{}'.format(datetime.datetime.now().strftime('%Y%m%d_%H:%M'),
+                                                            max_iter / 1000, model, prompt[opt_prompt])
+if not os.path.lexists(path):
+    os.mkdir(path)
+session_dir = path + '/session_data.txt'
+metric_dir = path + '/iteration_metrics.csv'
+sequest_dir = path + '/sequest_probabiity.csv'
+qsrr_dir = path + '/qsrr_trprediction.csv'
+impsequest_dir = path + '/improvedsequest_probabilities.csv'
 
 func.fileprint('------------------- Session Data ------------------\n'
                'Iterations: {}\n'
@@ -32,10 +45,10 @@ func.fileprint('------------------- Session Data ------------------\n'
                'Delta Cn limit: {}\n'
                'Kfold splits: {}\n'
                .format(max_iter, limxc, limdelc, n_splits),
-               directory=direct)
+               directory=session_dir)
 
 # Optimisation procedure
-if input('Initiate Optimisation? (Y/N)\n').lower() == 'y':
+if opt_prompt == 1:
     df = labelling(rawdata, limxc, limdelc, None, 'delc')
     scaled_data, labelset, trset, sc, tr_max = splitting(df, 'Sequest')
 
@@ -43,7 +56,7 @@ if input('Initiate Optimisation? (Y/N)\n').lower() == 'y':
     print('    --------------- SEQUEST Optimisation --------------')
     func.fileprint('Optimisation Selected\n\n'
                    '    --------------- SEQUEST Optimisation --------------',
-                   directory=direct)
+                   directory=session_dir)
 
     x_train, x_test, y_train, y_test = labelset
     clf = XGBClassifier().fit(x_train, y_train)
@@ -70,7 +83,7 @@ if input('Initiate Optimisation? (Y/N)\n').lower() == 'y':
                       initial_mcc_test
                       )
     print(toprint)
-    func.fileprint(toprint, directory=direct)
+    func.fileprint(toprint, directory=session_dir)
 
     # Creating optimisation function, needs to be in each
     def clf_objective(x):
@@ -128,12 +141,12 @@ if input('Initiate Optimisation? (Y/N)\n').lower() == 'y':
                       time.strftime("%H:%M:%S", time.gmtime(clfopt_time))
                       )
     print(toprint)
-    func.fileprint(toprint, directory=direct)
+    func.fileprint(toprint, directory=session_dir)
 
 # QSRR Optimisation
     print('    ----------------- QSRR Optimisation ---------------')
     func.fileprint('    ----------------- QSRR Optimisation ---------------',
-                   directory=direct)
+                   directory=session_dir)
     x_train, x_test, y_train, y_test = trset
     reg = XGBRegressor(objective="reg:squarederror").fit(x_train, y_train)
 
@@ -160,7 +173,7 @@ if input('Initiate Optimisation? (Y/N)\n').lower() == 'y':
                       )
 
     print(toprint)
-    func.fileprint(toprint, directory=direct)
+    func.fileprint(toprint, directory=session_dir)
 
     # Creating optimisation function, needs to be in each
     def reg_objective(x):
@@ -218,9 +231,9 @@ if input('Initiate Optimisation? (Y/N)\n').lower() == 'y':
                       time.strftime("%H:%M:%S", time.gmtime(regopt_time))
                       )
     print(toprint)
-    func.fileprint(toprint, directory=direct)
+    func.fileprint(toprint, directory=session_dir)
 else:
-    func.fileprint('Optimisation not selected', directory=direct)
+    func.fileprint('Optimisation not selected', directory=session_dir)
     clfopt_time = 0
     regopt_time = 0
     clf_params = None
@@ -229,8 +242,8 @@ else:
 
 def parallel_model(arg_iter):
     modeldata, validationdata = train_test_split(rawdata, test_size=0.3, shuffle=True)
-    modeldata = modeldata.reset_index()
-    validationdata = validationdata.reset_index()
+    # modeldata = modeldata.reset_index()
+    # validationdata = validationdata.reset_index()
 
     models, stats = traintest(modeldata, limxc, limdelc, clf_params, reg_params)
     # stats is in the following format: acc, sens, spec, mcc,    for sequest
@@ -255,7 +268,7 @@ def parallel_model(arg_iter):
 # Execute parallelized optimization only if the file is ran as a main file
 if __name__ == '__main__':
     print('Initiating Resampling for {} iterations'.format(max_iter))
-    func.fileprint('Initiating Resampling for {} iterations'.format(max_iter), directory=direct)
+    func.fileprint('Initiating Resampling for {} iterations'.format(max_iter), directory=session_dir)
 
     iter_start = time.time()
 
@@ -286,15 +299,15 @@ if __name__ == '__main__':
               'rmse_valid_qsrr',
               'acc_valid_both', 'sens_valid_both', 'spec_valid_both', 'mcc_valid_both']
     func.add_true_mean_std(None, pd.DataFrame(masterStats, columns=column)
-                           ).to_csv('results/iteration_metrics_{}iters.csv'.format(max_iter), header=True)
+                           ).to_csv(metric_dir)
 
     # Generating predictions
     func.add_true_mean_std(y_true_label, pd.DataFrame(y_proba1)
-                           ).to_csv('results/sequest_probabilities_{}iters.csv'.format(max_iter), header=True)
+                           ).to_csv(sequest_dir)
     func.add_true_mean_std(y_true_tr, pd.DataFrame(y_hat_reg)
-                           ).to_csv('results/qsrr_trprediction_{}iters.csv'.format(max_iter), header=True)
+                           ).to_csv(qsrr_dir)
     func.add_true_mean_std(y_true_label, pd.DataFrame(y_proba2)
-                           ).to_csv('results/improvedsequest_probabilities_{}iters.csv'.format(max_iter), header=True)
+                           ).to_csv(impsequest_dir)
 
     resampl_time = time.time() - iter_start
     total_time = time.time() - start_time
@@ -304,8 +317,8 @@ if __name__ == '__main__':
     print('Total Duration: {}'.format(time.strftime("%H:%M:%S", time.gmtime(total_time))))
 
     func.fileprint('Optimisation Duration: {}'.format(time.strftime("%H:%M:%S", time.gmtime(clfopt_time+regopt_time))),
-                   directory=direct)
+                   directory=session_dir)
     func.fileprint('Resampling Duration: {}'.format(time.strftime("%H:%M:%S", time.gmtime(resampl_time))),
-                   directory=direct)
+                   directory=session_dir)
     func.fileprint('Total Duration: {}'.format(time.strftime("%H:%M:%S", time.gmtime(total_time))),
-                   directory=direct)
+                   directory=session_dir)

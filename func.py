@@ -21,7 +21,7 @@ def get_mcc(y_data, y_hat):
 
 
 def fileprint(string, directory):
-    with open(os.getcwd() + '{}.txt'.format(directory), 'a') as f:
+    with open(directory, 'a') as f:
         print(string, file=f)
 
 
