@@ -1,6 +1,7 @@
 # Importing packages
-import pandas as pd
 import func
+import numpy as np
+import pandas as pd
 from preprocessing import labelling, splitting, data_restrict
 from classification import classify_xgbc, classify_stats
 from regression import regress_pls, regress_gbr, regress_xgbr
@@ -21,14 +22,17 @@ def traintest(modeldata, limxc, limdelc, clf_params=None, reg_params=None):
     # reg, reg_traindata, reg_testdata = regress_pls(trset, reg_params)
     # reg, reg_traindata, reg_testdata = regress_gbr(trset, reg_params)
     reg, reg_traindata, reg_testdata = regress_xgbr(trset, reg_params)
+    train_order = func.get_order(reg_traindata[1], reg_traindata[2])
+    test_order = func.get_order(reg_testdata[1], reg_testdata[2])
 
-    # mre_train = func.get_mre(reg_testdata[1], reg_testdata[2])
     rmsre_train = func.get_rmsre(reg_traindata[1], reg_traindata[2])
+    rmsre_train_order = func.get_rmsre(np.arange(1, len(train_order) + 1), train_order)
     rmsre_test = func.get_rmsre(reg_testdata[1], reg_testdata[2])
+    rmsre_test_order = func.get_rmsre(np.arange(1, len(test_order) + 1), test_order)
 
     # Label for Improved Sequest, inclusion of relative error
     df2 = func.add_error(reg, df, scaled_data)
-    df2 = labelling(df2, limxc, limdelc, mre_train, method='mre')
+    df2 = labelling(df2, limxc, limdelc, rmsre_train, method='mre')
     scaled_data2, labelset2, trset2, sc2, tr_max2 = splitting(df2, 'Improved Sequest')
 
     # Improved SEQUEST Model
@@ -39,17 +43,17 @@ def traintest(modeldata, limxc, limdelc, clf_params=None, reg_params=None):
     # Collation of Statistics
     model = (sc, sc2, clf, clf2, reg, rmsre_train)
     stats = (acc_train1, sens_train1, spec_train1, mcc_train1,
-             rmsre_train,
+             rmsre_train, rmsre_train_order,
              acc_train2, sens_train2, spec_train2, mcc_train2,
              acc_test1, sens_test1, spec_test1, mcc_test1,
-             rmsre_test,
+             rmsre_test, rmsre_test_order,
              acc_test2, sens_test2, spec_test2, mcc_test2)
 
     return model, stats
 
 
 def validate(validationdata, models, limxc, limdelc):
-    sc, sc2, clf, clf2, reg, mre_train = models
+    sc, sc2, clf, clf2, reg, rmsre_train = models
 
     # Label for SEQUEST
     df_valid = labelling(validationdata, limxc, limdelc, method='delc')
@@ -83,11 +87,14 @@ def validate(validationdata, models, limxc, limdelc):
                          'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
     y_data_reg = y_data['tR / min']
     y_hat_reg = reg.predict(x_data_reg).ravel()
+    valid_order = func.get_order(y_data_reg, y_hat_reg)
+
     rmsre_valid = func.get_rmsre(y_data_reg, y_hat_reg)
+    rmsre_valid_order = func.get_rmsre(np.arange(1, len(valid_order) + 1), valid_order)
 
     # Label for Improved SEQUEST
     df_valid2 = func.add_error(reg, df_valid, [x_data, y_data])
-    df_valid2 = labelling(df_valid2, limxc, limdelc, mre_train, method='mre')
+    df_valid2 = labelling(df_valid2, limxc, limdelc, rmsre_train, method='mre')
 
     # Scaling
     x_data2 = df_valid2[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
@@ -105,6 +112,6 @@ def validate(validationdata, models, limxc, limdelc):
     acc2, sens2, spec2, mcc2 = classify_stats([x_data_clf2, y_data_clf2, y_hat_clf2])
 
     # Collation of Statistics
-    validstats = (acc1, sens1, spec1, mcc1, rmsre_valid, acc2, sens2, spec2, mcc2)
+    validstats = (acc1, sens1, spec1, mcc1, rmsre_valid, rmsre_valid_order, acc2, sens2, spec2, mcc2)
 
     return validstats

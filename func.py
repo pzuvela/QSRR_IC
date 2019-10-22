@@ -59,7 +59,7 @@ def add_error(reg, rawdata, scaleddata):
 
 
 def get_stats(main_data, limxc, limdelc, models):
-    sc, sc2, clf, clf2, reg, mre_train = models
+    sc, sc2, clf, clf2, reg, rmsre_train = models
 
     # Label for SEQUEST
     df = labelling(main_data, limxc, limdelc, method='delc')
@@ -85,7 +85,7 @@ def get_stats(main_data, limxc, limdelc, models):
 
     # Label for Improved SEQUEST
     df2 = add_error(reg, df, [x_data, y_data])
-    df2 = labelling(df2, limxc, limdelc, mre=mre_train, method='mre')
+    df2 = labelling(df2, limxc, limdelc, mre=rmsre_train, method='mre')
 
     # Scaling
     x_data2 = df2[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',

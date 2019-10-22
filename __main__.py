@@ -49,7 +49,7 @@ metric_dir = path + '/iteration_metrics.csv'
 sequest_dir = path + '/sequest_probabiity.csv'
 qsrr_dir = path + '/qsrr_trprediction.csv'
 order_dir = path + '/eluorder_prediction.csv'
-impsequest_dir = path + '/improvedsequest_probabilities.csv'
+impsequest_dir = path + '/improvedsequest_probability.csv'
 
 func.fileprint('------------------- Session Data ------------------\n'
                'Date/Time: {}\n'
@@ -145,7 +145,7 @@ if opt_prompt == 1:
               '    Final CV-MCC: {:.3f}\n'\
               '    Final MCC-Train: {:.2f}'\
               '    Final MCC-Test: {:.2f}\n'\
-              '    Optimisation Duration: {} min\n'\
+              '    Optimisation Duration: {}\n'\
               '    ---------------------------------------------------\n'\
               .format(int(np.round(final_values.x[0], decimals=0)),
                       final_values.x[1],
@@ -235,7 +235,7 @@ if opt_prompt == 1:
               '    Final %RMSECV: {:.3f}%\n'\
               '    Final %RMSEE: {:.2f}%'\
               '    Final %RMSEP: {:.2f}%\n'\
-              '    Optimisation Duration: {} min\n'\
+              '    Optimisation Duration: {}\n'\
               '    ---------------------------------------------------\n'\
               .format(int(np.round(final_values.x[0], decimals=0)),
                       final_values.x[1],
@@ -306,13 +306,13 @@ if __name__ == '__main__':
 
     # Generating csv of metrics
     column = ['acc_train_sequest', 'sens_train_sequest', 'spec_train_sequest', 'mcc_train_sequest',
-              'rmse_train_qsrr',
+              'rmse_train_qsrr', 'rmse_train_order',
               'acc_train_both', 'sens_train_both', 'spec_train_both', 'mcc_train_both',
               'acc_test_sequest', 'sens_test_sequest', 'spec_test_sequest', 'mcc_test_sequest',
-              'rmse_test_qsrr',
+              'rmse_test_qsrr', 'rmse_test_order',
               'acc_test_both', 'sens_test_both', 'spec_test_both', 'mcc_test_both',
               'acc_valid_sequest', 'sens_valid_sequest', 'spec_valid_sequest', 'mcc_valid_sequest',
-              'rmse_valid_qsrr',
+              'rmse_valid_qsrr', 'rmse_valid_order',
               'acc_valid_both', 'sens_valid_both', 'spec_valid_both', 'mcc_valid_both']
     func.add_true_mean_std(None, pd.DataFrame(masterStats, columns=column)
                            ).to_csv(metric_dir)
@@ -330,13 +330,13 @@ if __name__ == '__main__':
     resampl_time = time.time() - iter_start
     total_time = time.time() - start_time
 
-    print('Optimisation Duration: {} min'.format(time.strftime("%H:%M:%S", time.gmtime(clfopt_time+regopt_time))))
-    print('Resampling Duration: {} min'.format(time.strftime("%H:%M:%S", time.gmtime(resampl_time))))
-    print('Total Duration: {} min'.format(time.strftime("%H:%M:%S", time.gmtime(total_time))))
+    print('Optimisation Duration: {}'.format(time.strftime("%H:%M:%S", time.gmtime(clfopt_time+regopt_time))))
+    print('Resampling Duration: {}'.format(time.strftime("%H:%M:%S", time.gmtime(resampl_time))))
+    print('Total Duration: {}'.format(time.strftime("%H:%M:%S", time.gmtime(total_time))))
 
-    func.fileprint('Optimisation Duration: {} min'.format(time.strftime("%H:%M:%S", time.gmtime(clfopt_time+regopt_time))),
+    func.fileprint('Optimisation Duration: {}'.format(time.strftime("%H:%M:%S", time.gmtime(clfopt_time+regopt_time))),
                    directory=session_dir)
-    func.fileprint('Resampling Duration: {} min'.format(time.strftime("%H:%M:%S", time.gmtime(resampl_time))),
+    func.fileprint('Resampling Duration: {}'.format(time.strftime("%H:%M:%S", time.gmtime(resampl_time))),
                    directory=session_dir)
-    func.fileprint('Total Duration: {} min'.format(time.strftime("%H:%M:%S", time.gmtime(total_time))),
+    func.fileprint('Total Duration: {}'.format(time.strftime("%H:%M:%S", time.gmtime(total_time))),
                    directory=session_dir)
