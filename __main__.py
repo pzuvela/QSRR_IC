@@ -252,7 +252,9 @@ else:
     clfopt_time = 0
     regopt_time = 0
     clf_params = None
-    reg_params = None
+    reg_params = {'n_estimators': 403,
+                  'learning_rate': 0.22,
+                  'max_depth': 3}  # Final %RMSEE: 1.39%
 
 
 def parallel_model(arg_iter):
