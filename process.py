@@ -53,12 +53,12 @@ def validate(validationdata, models, limxc, limdelc):
 
     # Label for SEQUEST
     df_valid = labelling(validationdata, limxc, limdelc, method='delc')
-
-    # Scaling of Data
     x_data = df_valid[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
                        'A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
                        'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
     y_data = df_valid[['tR / min', 'labels']]  # y_data is not scaled for now
+
+    # Scaling of Data
     x_data = pd.DataFrame(sc.transform(x_data), columns=x_data.columns)
 
     '''
@@ -71,23 +71,21 @@ def validate(validationdata, models, limxc, limdelc):
     if text is True:
         print('Final shape of validation Set : {}'.format(df_valid.shape))
     '''
-    # Splitting
-    x_data_clf = x_data[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp']]
-    x_data_reg = x_data[['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
-                         'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
-
-    y_data_clf = y_data['labels']
-    y_data_reg = y_data['tR / min']
 
     # SEQUEST Model
+    x_data_clf = x_data[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp']]
+    y_data_clf = y_data['labels']
     y_hat_clf1 = clf.predict(x_data_clf).ravel()
     acc1, sens1, spec1, mcc1 = classify_stats([x_data_clf, y_data_clf, y_hat_clf1])
 
     # QSRR Model
+    x_data_reg = x_data[['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
+                         'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
+    y_data_reg = y_data['tR / min']
     y_hat_reg = reg.predict(x_data_reg).ravel()
     rmsre_valid = func.get_rmsre(y_data_reg, y_hat_reg)
 
-    # Label for Improved Sequest
+    # Label for Improved SEQUEST
     df_valid2 = func.add_error(reg, df_valid, [x_data, y_data])
     df_valid2 = labelling(df_valid2, limxc, limdelc, mre_train, method='mre')
 
@@ -99,12 +97,10 @@ def validate(validationdata, models, limxc, limdelc):
     y_data2 = df_valid2[['tR / min', 'labels']]  # y_data is not scaled for now
     x_data2 = pd.DataFrame(sc2.transform(x_data2), columns=x_data2.columns)
 
-    # Splitting
+    # Improved SEQUEST Model
     x_data_clf2 = x_data2[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
                            'error']]
     y_data_clf2 = y_data2['labels']
-
-    # Improved SEQUEST Model
     y_hat_clf2 = clf2.predict(x_data_clf2)
     acc2, sens2, spec2, mcc2 = classify_stats([x_data_clf2, y_data_clf2, y_hat_clf2])
 

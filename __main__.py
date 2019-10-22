@@ -37,7 +37,7 @@ prompt = ['', '_opt']
 # Pre-loading Directories
 try:
     path = os.getcwd() + '/results/{}_{:.0f}kiters_{}{}'.format(datetime.datetime.now().strftime('%Y%m%d_%H%M'),
-                                                            max_iter / 1000, model, prompt[opt_prompt])
+                                                                max_iter / 1000, model, prompt[opt_prompt])
     if not os.path.lexists(path):
         os.mkdir(path)
 except IndexError:
@@ -48,6 +48,7 @@ session_dir = path + '/session_data.txt'
 metric_dir = path + '/iteration_metrics.csv'
 sequest_dir = path + '/sequest_probabiity.csv'
 qsrr_dir = path + '/qsrr_trprediction.csv'
+order_dir = path + '/eluorder_prediction.csv'
 impsequest_dir = path + '/improvedsequest_probabilities.csv'
 
 func.fileprint('------------------- Session Data ------------------\n'
@@ -270,11 +271,11 @@ def parallel_model(arg_iter):
     # Collation of Statistics
     metrics = stats + validstats
     all_stats = func.get_stats(rawdata, limxc, limdelc, models)
-    stats_proba1 = all_stats[0]
-    stats_yhat = all_stats[1]
-    stats_proba2 = all_stats[2]
+    stats_sequest = all_stats[0]
+    stats_qsrr = all_stats[1]
+    stats_impsequest = all_stats[2]
 
-    return metrics, stats_proba1, stats_yhat, stats_proba2
+    return metrics, stats_sequest, stats_qsrr, stats_impsequest
 
 
 # Execute parallelized optimization only if the file is ran as a main file
@@ -292,13 +293,14 @@ if __name__ == '__main__':
     masterStats = [final_model[i][0] for i in range(max_iter)]
 
     y_true_label = final_model[0][1][0]
-    y_proba1 = [final_model[i][1][1] for i in range(max_iter)]
+    y_sequest = [final_model[i][1][1] for i in range(max_iter)]
 
     y_true_tr = final_model[0][2][0]
     y_hat_reg = [final_model[i][2][1] for i in range(max_iter)]
+    y_order_reg = [final_model[i][2][2] for i in range(max_iter)]
 
     # y_true3 = [final_model[i][3][0] for i in range(max_iter)]
-    y_proba2 = [final_model[i][3][1] for i in range(max_iter)]
+    y_impsequest = [final_model[i][3][1] for i in range(max_iter)]
 
     # Generating csv of metrics
     column = ['acc_train_sequest', 'sens_train_sequest', 'spec_train_sequest', 'mcc_train_sequest',
@@ -314,11 +316,13 @@ if __name__ == '__main__':
                            ).to_csv(metric_dir)
 
     # Generating predictions
-    func.add_true_mean_std(y_true_label, pd.DataFrame(y_proba1)
+    func.add_true_mean_std(y_true_label, pd.DataFrame(y_sequest)
                            ).to_csv(sequest_dir)
     func.add_true_mean_std(y_true_tr, pd.DataFrame(y_hat_reg)
                            ).to_csv(qsrr_dir)
-    func.add_true_mean_std(y_true_label, pd.DataFrame(y_proba2)
+    func.add_true_mean_std(None, pd.DataFrame(y_order_reg)
+                           ).to_csv(order_dir)
+    func.add_true_mean_std(y_true_label, pd.DataFrame(y_impsequest)
                            ).to_csv(impsequest_dir)
 
     resampl_time = time.time() - iter_start

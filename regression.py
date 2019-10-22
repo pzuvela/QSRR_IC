@@ -64,7 +64,7 @@ def regress_pls(trset, reg_params=None):
         # Implementing optimised parameters
         # optstats = [nlvs, rmsecv, rmsee]
         optstats = [nlvs, rmsecv]
-        lvs = func.knee(nlvs, rmsecv)  # some code to find knee point
+        lvs = func.get_knee(nlvs, rmsecv)  # some code to find knee point
         print('    Optimised Lvs: {}'.format(lvs))
         print('    ------------ Completion of Optimisation -----------')
         print(' ')
