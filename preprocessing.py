@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
@@ -23,17 +24,15 @@ def labelling(data, lim_xc, lim_delc, mre=None, method='xc'):
 
     def error(charge, xc, delc, error, mean_error):
         if ((charge == 1 and xc >= lim_xc[0]) or (charge == 2 and xc >= lim_xc[1])
-                or (charge >= 3 and xc >= lim_xc[2])) and delc >= lim_delc and error < mean_error:
+                or (charge >= 3 and xc >= lim_xc[2])) and delc >= lim_delc and error <= mean_error:
             return 1
         else:
             return 0
 
     if method == 'xc':
-        # data = data.assign({'labels': lambda x: xc(x['Charge'], x['XC'])})
         data.loc[:, 'labels'] = data.apply(lambda x: xc(x['Charge'], x['XC']), axis=1)
 
     elif method == 'delc':
-        # data = data.assign(labels=lambda x: delc(x['Charge'], x['XC'], x['Delta Cn']))
         data.loc[:, 'labels'] = data.apply(lambda x: delc(x['Charge'], x['XC'], x['Delta Cn']), axis=1)
 
     elif method == 'mre' and mre is not None:
@@ -41,6 +40,7 @@ def labelling(data, lim_xc, lim_delc, mre=None, method='xc'):
                                            , axis=1)
     else:
         print("Unrecognised Method: Choose from 'xc', 'delc' or 'mre'")
+        sys.exit()
 
     return data
 

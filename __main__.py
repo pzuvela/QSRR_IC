@@ -52,12 +52,14 @@ order_dir = path + '/eluorder_prediction.csv'
 impsequest_dir = path + '/improvedsequest_probabilities.csv'
 
 func.fileprint('------------------- Session Data ------------------\n'
+               'Date/Time: {}\n'
                'Iterations: {}\n'
                'X correlation limits: {}\n'
                'Delta Cn limit: {}\n'
                'Kfold splits: {}\n'
                'Model Used: {}'
-               .format(max_iter, limxc, limdelc, n_splits, model.upper()),
+               .format(datetime.datetime.now().strftime('%d%m%Y/%H:%M'),
+                       max_iter, limxc, limdelc, n_splits, model.upper()),
                directory=session_dir)
 
 # Optimisation procedure
@@ -148,7 +150,7 @@ if opt_prompt == 1:
               .format(int(np.round(final_values.x[0], decimals=0)),
                       final_values.x[1],
                       int(np.round(final_values.x[2], decimals=0)),
-                      final_values.fun,
+                      -final_values.fun,
                       final_mcc_train,
                       final_mcc_test,
                       time.strftime("%H:%M:%S", time.gmtime(clfopt_time))
