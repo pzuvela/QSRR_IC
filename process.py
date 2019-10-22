@@ -22,7 +22,7 @@ def traintest(modeldata, limxc, limdelc, clf_params=None, reg_params=None):
     # reg, reg_traindata, reg_testdata = regress_gbr(trset, reg_params)
     reg, reg_traindata, reg_testdata = regress_xgbr(trset, reg_params)
 
-    mre_train = func.get_mre(reg_testdata[1], reg_testdata[2])
+    # mre_train = func.get_mre(reg_testdata[1], reg_testdata[2])
     rmsre_train = func.get_rmsre(reg_traindata[1], reg_traindata[2])
     rmsre_test = func.get_rmsre(reg_testdata[1], reg_testdata[2])
 
@@ -37,7 +37,7 @@ def traintest(modeldata, limxc, limdelc, clf_params=None, reg_params=None):
     acc_test2, sens_test2, spec_test2, mcc_test2 = classify_stats(clf_testdata2)
 
     # Collation of Statistics
-    model = (sc, sc2, clf, clf2, reg, mre_train)
+    model = (sc, sc2, clf, clf2, reg, rmsre_train)
     stats = (acc_train1, sens_train1, spec_train1, mcc_train1,
              rmsre_train,
              acc_train2, sens_train2, spec_train2, mcc_train2,

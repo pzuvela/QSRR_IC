@@ -145,7 +145,7 @@ if opt_prompt == 1:
               '    Final CV-MCC: {:.3f}\n'\
               '    Final MCC-Train: {:.2f}'\
               '    Final MCC-Test: {:.2f}\n'\
-              '    Optimisation Duration: {}\n'\
+              '    Optimisation Duration: {} min\n'\
               '    ---------------------------------------------------\n'\
               .format(int(np.round(final_values.x[0], decimals=0)),
                       final_values.x[1],
@@ -235,7 +235,7 @@ if opt_prompt == 1:
               '    Final %RMSECV: {:.3f}%\n'\
               '    Final %RMSEE: {:.2f}%'\
               '    Final %RMSEP: {:.2f}%\n'\
-              '    Optimisation Duration: {}\n'\
+              '    Optimisation Duration: {} min\n'\
               '    ---------------------------------------------------\n'\
               .format(int(np.round(final_values.x[0], decimals=0)),
                       final_values.x[1],
@@ -330,13 +330,13 @@ if __name__ == '__main__':
     resampl_time = time.time() - iter_start
     total_time = time.time() - start_time
 
-    print('Optimisation Duration: {}'.format(time.strftime("%H:%M:%S", time.gmtime(clfopt_time+regopt_time))))
-    print('Resampling Duration: {}'.format(time.strftime("%H:%M:%S", time.gmtime(resampl_time))))
-    print('Total Duration: {}'.format(time.strftime("%H:%M:%S", time.gmtime(total_time))))
+    print('Optimisation Duration: {} min'.format(time.strftime("%H:%M:%S", time.gmtime(clfopt_time+regopt_time))))
+    print('Resampling Duration: {} min'.format(time.strftime("%H:%M:%S", time.gmtime(resampl_time))))
+    print('Total Duration: {} min'.format(time.strftime("%H:%M:%S", time.gmtime(total_time))))
 
-    func.fileprint('Optimisation Duration: {}'.format(time.strftime("%H:%M:%S", time.gmtime(clfopt_time+regopt_time))),
+    func.fileprint('Optimisation Duration: {} min'.format(time.strftime("%H:%M:%S", time.gmtime(clfopt_time+regopt_time))),
                    directory=session_dir)
-    func.fileprint('Resampling Duration: {}'.format(time.strftime("%H:%M:%S", time.gmtime(resampl_time))),
+    func.fileprint('Resampling Duration: {} min'.format(time.strftime("%H:%M:%S", time.gmtime(resampl_time))),
                    directory=session_dir)
-    func.fileprint('Total Duration: {}'.format(time.strftime("%H:%M:%S", time.gmtime(total_time))),
+    func.fileprint('Total Duration: {} min'.format(time.strftime("%H:%M:%S", time.gmtime(total_time))),
                    directory=session_dir)
