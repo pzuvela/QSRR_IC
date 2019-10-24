@@ -14,35 +14,33 @@ def get_rmsre(y_data, y_hat):
     return np.sqrt(np.square(100 * (y_hat - y_data) / y_data).mean())
 
 
+def get_rmse(y_data, y_hat):
+    return np.sqrt(np.square(y_hat - y_data).mean())
+
+
 def get_mcc(y_data, y_hat):
     tn, fp, fn, tp = confusion_matrix(y_data, y_hat).ravel()
     return ((tp * tn) - (fp * fn)) / ((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)) ** 0.5
 
 
-def get_order(y_true, y_pred):
-    if isinstance(y_pred, pd.DataFrame):
-        y_true = y_true.values
-        y_pred = y_pred.values
-    df_exp = pd.DataFrame(y_true, columns=['y_true'])
-    df_pred = pd.DataFrame(y_pred, columns=['y_pred'])
-    df_all = pd.concat([df_exp, df_pred], axis=1)
-
-    df_truesort = df_all.sort_values(by=['y_true']).set_index(pd.RangeIndex(1, len(y_true) + 1), drop=True)
-    df_predsort = df_truesort.sort_values(by=['y_pred'])
-    return df_predsort.index.values
+def fileprint(string, directory):
+    with open(directory, 'a') as f:
+        print(string, file=f)
 
 
-def get_knee(x, y):
-    del1, del2 = [], []
-    for i in range(0, len(x) - 1):
-        del1.append(y[i + 1] - y[i])
-
-    for j in range(0, len(del1) - 1):
-        del2.append(del1[j + 1] - del1[j])
-
-    max_del2 = np.argmax(del2)
-    knee = x[max_del2 + 2]
-    return int(knee)
+def histplot(y_data, title, x_axis):
+    fig, ax = plt.subplots()
+    ax.hist(y_data, bins=20, density=True)
+    x_min, x_max = ax.get_xlim()
+    y_mean, y_std = norm.fit(y_data)
+    p = norm.pdf(np.linspace(x_min, x_max, 100), y_mean, y_std)
+    ax.plot(np.linspace(x_min, x_max, 100), p)
+    ax.set_title(title)
+    ax.set_ylabel('Probability Density')
+    ax.set_xlabel(x_axis)
+    ax.text(0.2, 0.9, s='Mean:{:.2f} +/- {:.2f}'.format(y_mean, 3*y_std), horizontalalignment='center',
+            verticalalignment='center', transform=ax.transAxes, bbox=dict(facecolor='red', alpha=0.5))
+    return fig
 
 
 def add_error(reg, rawdata, scaleddata):
@@ -58,8 +56,21 @@ def add_error(reg, rawdata, scaleddata):
     return rawdata
 
 
+def knee(x, y):
+    del1, del2 = [], []
+    for i in range(0, len(x) - 1):
+        del1.append(y[i + 1] - y[i])
+
+    for j in range(0, len(del1) - 1):
+        del2.append(del1[j + 1] - del1[j])
+
+    max_del2 = np.argmax(del2)
+    kneept = x[max_del2 + 2]
+    return int(kneept)
+
+
 def get_stats(main_data, limxc, limdelc, models):
-    sc, sc2, clf, clf2, reg, rmsre_train = models
+    sc, sc2, clf, clf2, reg, mre_train = models
 
     # Label for SEQUEST
     df = labelling(main_data, limxc, limdelc, method='delc')
@@ -81,11 +92,10 @@ def get_stats(main_data, limxc, limdelc, models):
                          'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
     y_data_reg = y_data[['tR / min']].values.ravel()
     y_hat_reg = reg.predict(x_data_reg).ravel()
-    pred_order = get_order(y_data_reg, y_hat_reg)
 
     # Label for Improved SEQUEST
     df2 = add_error(reg, df, [x_data, y_data])
-    df2 = labelling(df2, limxc, limdelc, mre=rmsre_train, method='mre')
+    df2 = labelling(df2, limxc, limdelc, mre=mre_train, method='mre')
 
     # Scaling
     x_data2 = df2[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
@@ -100,7 +110,7 @@ def get_stats(main_data, limxc, limdelc, models):
     y_data_clf2 = df2[['labels']].values.ravel()
     y_hat_proba2 = clf2.predict_proba(x_data_clf2)[:, 1].ravel()
 
-    return [y_data_clf, y_hat_proba1], [y_data_reg, y_hat_reg, pred_order], [y_data_clf2, y_hat_proba2]
+    return [y_data_clf, y_hat_proba1], [y_data_reg, y_hat_reg], [y_data_clf2, y_hat_proba2]
 
 
 def add_true_mean_std(y_true, df):
@@ -126,6 +136,15 @@ def add_true_mean_std(y_true, df):
     return df
 
 
+def add_mean_std(df):
+    mean = df.mean(axis=0).ravel()
+    std = df.std(axis=0).ravel()
+    stats = [mean, std]
+    df_stats = pd.DataFrame(stats, index=['mean', 'std'])
+    df = pd.concat([df_stats, df])
+    return df
+
+
 def get_limits(file):
     df = pd.read_csv(file)
     stats_list = []
@@ -145,23 +164,3 @@ def get_limits(file):
         print(towrite)
     pd.DataFrame(stats_list, columns=['label', 'mean', 'lower_limit', 'upper_limit', 'lower_value', 'upper_value'])\
         .to_csv('{}_stats.csv'.format(file[:-4]), index=False)
-
-
-def fileprint(string, directory):
-    with open(directory, 'a') as f:
-        print(string, file=f)
-
-
-def histplot(y_data, title='title', x_axis='x'):
-    fig, ax = plt.subplots()
-    ax.hist(y_data, bins=20, density=True)
-    x_min, x_max = ax.get_xlim()
-    y_mean, y_std = norm.fit(y_data)
-    p = norm.pdf(np.linspace(x_min, x_max, 100), y_mean, y_std)
-    ax.plot(np.linspace(x_min, x_max, 100), p)
-    ax.set_title(title)
-    ax.set_ylabel('Probability Density')
-    ax.set_xlabel(x_axis)
-    ax.text(0.2, 0.9, s='Mean:{:.2f} +/- {:.2f}'.format(y_mean, 3*y_std), horizontalalignment='center',
-            verticalalignment='center', transform=ax.transAxes, bbox=dict(facecolor='red', alpha=0.5))
-    return fig
