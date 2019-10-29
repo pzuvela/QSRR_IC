@@ -12,20 +12,20 @@ from multiprocessing import Pool
 from func import add_true_mean_std, get_rmse
 from iso2grad import model
 
-fileroot = os.getcwd() + "\\data\\"
+fileroot = os.getcwd() + '/data/'
 # for sys in [1, 2, 3]:
 # 4 : QSRR in IC
 sys = 4
 # for mean in ['nomean', 'mean']:
 mean = 'mean'
 max_iter = 10
-proc_i = 4
+proc_i = 16
 n_splits = 3
 
 opt_prompt = int(input('Initiate Optimisation? (1/0)\n'))
 if opt_prompt == 1:
     # rawdata = pd.read_csv('{}{}{}.csv'.format(fileroot, sys, mean))
-    rawdata = pd.read_csv('{}2019-QSRR_in_IC_Part_IV_data_latest.csv'.format(fileroot))
+    rawdata = pd.read_csv(os.getcwd() + '/data/2019-QSRR_in_IC_Part_IV_data_latest.csv')
     rawdata.drop(rawdata[rawdata['logk'] == 0.000].index, inplace=True)
 
     # x_data = rawdata[['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I', 'L', 'K', 'M', 'F', 'P', 'S', 'T',
@@ -94,8 +94,8 @@ if opt_prompt == 1:
 
         return np.mean(score)
 
-    final_values = optimize.differential_evolution(reg_objective, bounds, workers=proc_i, updating='deferred',
-                                                   mutation=(1.5, 1.9), popsize=20, disp=True)
+    final_values = optimize.differential_evolution(reg_objective, bounds, workers=-1, updating='deferred',
+                                                   mutation=(1.5, 1.9), popsize=20)
     reg_params = {'n_estimators': int(np.round(final_values.x[0], decimals=0)),
                   'learning_rate': final_values.x[1],
                   'max_depth': int(np.round(final_values.x[2], decimals=0))}
@@ -163,9 +163,9 @@ def model_parallel(arg_iter):
     y_hat = reg.predict(x_data)
 
     # Load isocratic data, void times & gradient data
-    grad_data = np.genfromtxt(os.getcwd() + '\\data\\grad_data.csv', delimiter=',')
-    t_void = np.genfromtxt(os.getcwd() + '\\data\\t_void.csv', delimiter=',')
-    iso_data = np.genfromtxt(os.getcwd() + '\\data\\iso_data.csv', delimiter=',')
+    grad_data = np.genfromtxt(os.getcwd() + '/data/grad_data.csv', delimiter=',')
+    t_void = np.genfromtxt(os.getcwd() + '/data/t_void.csv', delimiter=',')
+    iso_data = np.genfromtxt(os.getcwd() + '/data/iso_data.csv', delimiter=',')
     tg_total = model(reg, iso_data, t_void, grad_data, sc)
     tg_total.ravel()
 
@@ -189,12 +189,12 @@ if __name__ == '__main__':
     print('Simulation Completed')
     print('Duration: {}\n'.format(time.strftime("%H:%M:%S", time.gmtime(run_time))))
 
-    np.savetxt("sideQSRR/tG_IC_results_test.csv", models_final[0][4], delimiter=",")
+    np.savetxt("/sideQSRR/tG_IC_results_test.csv", models_final[0][4], delimiter=",")
 
     column = ['rmsre_train', 'rmsre_test']
     add_true_mean_std(None, pd.DataFrame(masterStats, columns=column)).to_csv(
-        'sideQSRR/iteration_metrics_absrmse_sys{}{}_{}iters.csv'.format(sys, mean, max_iter), header=True)
+        os.getcwd() + '/sideQSRR/iteration_metrics_absrmse_sys{}{}_{}iters.csv'.format(sys, mean, max_iter), header=True)
 
     y_pred = pd.DataFrame(y_pred)
-    add_true_mean_std(y_true, y_pred).to_csv('sideQSRR/qsrr_trprediction_absrmse_sys{}{}_{}iters.csv'
+    add_true_mean_std(y_true, y_pred).to_csv(os.getcwd() + '/sideQSRR/qsrr_trprediction_absrmse_sys{}{}_{}iters.csv'
                                              .format(sys, mean, max_iter), header=True)
