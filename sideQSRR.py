@@ -120,6 +120,10 @@ if opt_prompt == 'yes':
                 time.strftime("%H:%M:%S", time.gmtime(regopt_time))
                 )
     print(toprint)
+
+    with open(os.getcwd() + '/sideQSRR/2019-QSRR_IC_PartIV-opt.txt', "w") as text_file:
+        text_file.write(toprint)
+
 else:
     reg_params = {'n_estimators': 403,
                   'learning_rate': 0.22,
