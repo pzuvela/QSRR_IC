@@ -1,3 +1,14 @@
+"""
+QSRR model development in IC
+
+Required packages:
+1) Pandas
+2) Numpy
+3) Scipy
+4) xgBoost
+5) scikit-learn
+
+"""
 import os
 import time
 import pandas as pd
@@ -16,8 +27,8 @@ from iso2grad import model
 fileroot = os.getcwd() + '/data/'
 
 # Fixed variables
-max_iter = 10000
-proc_i = 20
+max_iter = 100
+proc_i = 4
 n_splits = 3
 
 opt_prompt = str(input('Initiate Optimisation (default: no) ? (yes / no) '))
