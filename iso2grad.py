@@ -24,9 +24,7 @@ def model(qsrr_model, iso_data, t_void, grad_data, sc):
     for i in range(int(np.size(grad_data, axis=0))):
 
         # Pre-define tg1, tg2, i_prev & k1_2
-        tg1 = np.zeros(1)
-        i_prev = np.zeros(1)
-        k1_2 = np.zeros(1)
+        tg1, tg2, i_prev, i_partial, k1_2 = np.zeros((5, 1))
         tr_g = np.zeros(int(np.size(t_void, axis=1)))
 
         # Loop through the analytes
@@ -86,9 +84,12 @@ def model(qsrr_model, iso_data, t_void, grad_data, sc):
                     if i_prev < t_void[i, b] < i_next:
                         break
 
+                if i_prev < t_void[i, b] < i_next:
+                    break
+
             # Calculate retention time for a specified gradient
             tr_g[b] = t_void[i, b] + tg1 + (t_void[i, b] - i_prev) * k1_2
-            print('Iteration #{}: tG({}) = {} min'.format(i+1, b+1, tr_g[b]))
+            print('# Gradient profile #{}: tG({}) = {} min'.format(i+1, b+1, tr_g[b]))
 
         tg_total[i] = tr_g
 

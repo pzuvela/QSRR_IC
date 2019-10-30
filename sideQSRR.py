@@ -3,7 +3,7 @@ import time
 import pandas as pd
 import numpy as np
 from scipy import optimize
-from regression import regress_gbr, regress_xgbr, regress_plot
+from regression import regress_xgbr
 from xgboost import XGBRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split, KFold, cross_val_score
@@ -12,28 +12,22 @@ from multiprocessing import Pool
 from func import add_true_mean_std, get_rmse
 from iso2grad import model
 
+# Root data directory
 fileroot = os.getcwd() + '/data/'
-# for sys in [1, 2, 3]:
-# 4 : QSRR in IC
-sys = 4
-# for mean in ['nomean', 'mean']:
-mean = 'mean'
-max_iter = 10
-proc_i = 16
+
+# Fixed variables
+max_iter = 10000
+proc_i = 20
 n_splits = 3
 
-opt_prompt = int(input('Initiate Optimisation? (1/0)\n'))
-if opt_prompt == 1:
-    # rawdata = pd.read_csv('{}{}{}.csv'.format(fileroot, sys, mean))
+opt_prompt = str(input('Initiate Optimisation (default: no) ? (yes / no) '))
+
+if opt_prompt == 'yes':
+
     rawdata = pd.read_csv(os.getcwd() + '/data/2019-QSRR_in_IC_Part_IV_data_latest.csv')
     rawdata.drop(rawdata[rawdata['logk'] == 0.000].index, inplace=True)
 
-    # x_data = rawdata[['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I', 'L', 'K', 'M', 'F', 'P', 'S', 'T',
-    # 'W', 'Y', 'V']]
-    # ANFIS (published) model
-    # x_data = rawdata[['c(KOH)', 'Alc', 'Mor29e', 'Mor31p', 'G1u', 'R3m']]
     x_data = rawdata.drop(['tR', 'logk'], axis=1)
-    # y_data = rawdata[['tR / min']].values.ravel()
     y_data = rawdata[['logk']].values.ravel()
     x_train_unscaled, x_test_unscaled, y_train, y_test = train_test_split(x_data, y_data, test_size=0.3,
                                                                           shuffle=True)
@@ -134,15 +128,10 @@ else:
 
 def model_parallel(arg_iter):
 
-    # x_data = rawdata[['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I', 'L', 'K', 'M', 'F', 'P', 'S', 'T',
-    # 'W', 'Y', 'V']]
+    rawdata = pd.read_csv(os.getcwd() + '/data/2019-QSRR_in_IC_Part_IV_data_latest.csv')
     x_data = rawdata.drop(['tR', 'logk'], axis=1)
-    # ANFIS (published) model
-    # x_data = rawdata[['c(KOH)', 'Alc', 'Mor29e', 'Mor31p', 'G1u', 'R3m']]
-    # y_data = rawdata[['tR / min']].values.ravel()
     y_data = rawdata[['logk']].values.ravel()
     x_train_unscaled, x_test_unscaled, y_train, y_test = train_test_split(x_data, y_data, test_size=0.3, shuffle=True)
-    n_splits = 3
 
     sc = StandardScaler()
     x_train = pd.DataFrame(sc.fit_transform(x_train_unscaled), columns=x_train_unscaled.columns).values
@@ -162,39 +151,73 @@ def model_parallel(arg_iter):
     rmsre_test = get_rmse(y_test, y_hat_test)
     y_hat = reg.predict(x_data)
 
-    # Load isocratic data, void times & gradient data
+    # Gradient profiles
     grad_data = np.genfromtxt(os.getcwd() + '/data/grad_data.csv', delimiter=',')
-    t_void = np.genfromtxt(os.getcwd() + '/data/t_void.csv', delimiter=',')
-    iso_data = np.genfromtxt(os.getcwd() + '/data/iso_data.csv', delimiter=',')
-    tg_total = model(reg, iso_data, t_void, grad_data, sc)
-    tg_total.ravel()
 
-    print(tg_total)
+    # Void times
+    t_void = np.genfromtxt(os.getcwd() + '/data/t_void_test3.csv', delimiter=',')
+
+    # Isocratic data for all the analytes+
+    iso_data = np.genfromtxt(os.getcwd() + '/data/iso_data_test3.csv', delimiter=',')
+
+    # Gradient retention times
+    tg_exp = np.genfromtxt(os.getcwd() + '/data/tg_data_test3.csv', delimiter=',')
+
+    # Predicted retention times
+    tg_total = model(reg, iso_data, t_void, grad_data, sc).flatten(order='F')
+
+    rmsre_grad = get_rmse(tg_exp, tg_total)
+
     print('Iteration #{}/{} completed'.format(arg_iter[0] + 1, max_iter))
-    return rmsre_train, rmsre_test, y_data, y_hat, tg_total
+    return rmsre_train, rmsre_test, y_data, y_hat, rmsre_grad, tg_exp, tg_total
 
 
 if __name__ == '__main__':
+
+    # Display initialization and initialize start time
     print('Initiating with {} iterations'.format(max_iter))
     start_time = time.time()
 
+    # Start Parallel Pool with "proc_i" processes
     p = Pool(processes=proc_i)
     models_final = p.map(model_parallel, zip(range(max_iter)))
 
-    masterStats = [models_final[i][:2] for i in range(max_iter)]
+    # Training and testing RMSE
+    rmse_iso = [models_final[i][:2] for i in range(max_iter)]
+
+    # True and predicted isocratic retention times
     y_true = models_final[0][2]
     y_pred = [models_final[i][3] for i in range(max_iter)]
 
+    # Gradient RMSE
+    rmse_grad = [models_final[i][4] for i in range(max_iter)]
+
+    # True and predicted gradient retention times
+    tg_true = models_final[0][5]
+    tg_pred = [models_final[i][6] for i in range(max_iter)]
+
+    # Compute and display run-time
     run_time = time.time() - start_time
     print('Simulation Completed')
     print('Duration: {}\n'.format(time.strftime("%H:%M:%S", time.gmtime(run_time))))
 
-    np.savetxt("/sideQSRR/tG_IC_results_test.csv", models_final[0][4], delimiter=",")
-
+    # Save the distribution of isocratic retention time errors
     column = ['rmsre_train', 'rmsre_test']
-    add_true_mean_std(None, pd.DataFrame(masterStats, columns=column)).to_csv(
-        os.getcwd() + '/sideQSRR/iteration_metrics_absrmse_sys{}{}_{}iters.csv'.format(sys, mean, max_iter), header=True)
+    add_true_mean_std(None, pd.DataFrame(rmse_iso, columns=column)).to_csv(
+        os.getcwd() + '/sideQSRR/2019-QSRR_IC_PartIV-errors_iso_{}_iters.csv'.format(max_iter), header=True)
 
+    # Save predicted isocratic retention times
     y_pred = pd.DataFrame(y_pred)
-    add_true_mean_std(y_true, y_pred).to_csv(os.getcwd() + '/sideQSRR/qsrr_trprediction_absrmse_sys{}{}_{}iters.csv'
-                                             .format(sys, mean, max_iter), header=True)
+    add_true_mean_std(y_true, y_pred).to_csv(os.getcwd() + "/sideQSRR/2019-QSRR_IC_PartIV-tR_iso_{}_iters.csv"
+                                             .format(max_iter), header=True)
+
+    # Save the distribution of gradient retention time errors
+    column = ['rmsre_grad']
+    add_true_mean_std(None, pd.DataFrame(rmse_grad, columns=column)).to_csv(
+        os.getcwd() + '/sideQSRR/2019-QSRR_IC_PartIV-errors_grad_{}_iters.csv'.format(max_iter),
+        header=True)
+
+    # Save predicted gradient retention times
+    tg_pred = pd.DataFrame(tg_pred)
+    add_true_mean_std(y_true, y_pred).to_csv(os.getcwd() + "/sideQSRR/2019-QSRR_IC_PartIV-tR_grad_{}_iters.csv"
+                                             .format(max_iter), header=True)
