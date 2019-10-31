@@ -163,7 +163,7 @@ grad_data = np.genfromtxt(data_dir + 'grad_data.csv', delimiter=',')
 # Void times
 t_void = np.genfromtxt(data_dir + 't_void.csv', delimiter=',')
 
-# Isocratic data for all the analytes+
+# Isocratic data for all the analytes
 iso_data = np.genfromtxt(data_dir + 'iso_data.csv', delimiter=',')
 
 # Gradient retention times

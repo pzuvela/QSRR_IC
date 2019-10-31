@@ -3,6 +3,7 @@ import pandas as pd
 from scipy.stats import norm
 from sklearn.metrics import confusion_matrix
 
+
 def get_mre(y_data, y_hat):
     return 100 * np.abs((y_hat.ravel() - y_data) / y_data).mean()
 
