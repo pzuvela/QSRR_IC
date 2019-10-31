@@ -1,7 +1,5 @@
-import numpy as np
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.metrics import r2_score
 
 
 def regress_pls(trset, reg_params=None):

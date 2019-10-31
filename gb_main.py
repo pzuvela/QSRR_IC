@@ -30,10 +30,9 @@ max_iter = 100
 proc_i = 12
 n_splits = 3
 method = 'gbr'
+# method = 'xbr'
 
-# opt_prompt = str(input('Initiate Optimisation (default: no) ? (yes / no) '))
-
-opt_prompt = 'no'
+opt_prompt = str(input('Initiate Optimisation (default: no) ? (yes / no) '))
 
 if opt_prompt == 'yes':
 
@@ -51,7 +50,8 @@ if opt_prompt == 'yes':
     x_data = pd.DataFrame(sc.transform(x_data), columns=x_data.columns).values
 
     # reg = XGBRegressor(objective="reg:squarederror").fit(x_train, y_train)
-    reg = GradientBoostingRegressor().fit(x_train, y_train)
+    reg = GradientBoostingRegressor()
+    reg.fit(x_train, y_train)
 
     # QSRR Optimisation
     print('    ----------------- QSRR Optimisation ---------------')
@@ -135,7 +135,8 @@ if opt_prompt == 'yes':
                 )
     print(toprint)
 
-    with open(os.getcwd() + '/results/2019-QSRR_IC_PartIV-{}_{}_{}_{}_{}_{}_opt.txt'.format(datetime.datetime.now().strftime('%d%m%Y/%H:%M'), method), "w") as text_file:
+    with open(os.getcwd() + '/results/2019-QSRR_IC_PartIV-{}_{}_opt.txt'.format(
+            datetime.datetime.now().strftime('%d_%m_%Y-%H_%M'), method), "w") as text_file:
         text_file.write(toprint)
 
 else:
@@ -231,20 +232,24 @@ if __name__ == '__main__':
     # Save the distribution of isocratic retention time errors
     column = ['rmsre_train', 'rmsre_test']
     add_true_mean_std(None, pd.DataFrame(rmse_iso, columns=column)).to_csv(
-        os.getcwd() + '/results/2019-QSRR_IC_PartIV-{}_{}_{}_{}_{}_{}_{}_errors_iso_{}_iters.csv'.format(datetime.datetime.now().strftime('%d%m%Y/%H:%M'), method, max_iter), header=True)
+        os.getcwd() + '/results/2019-QSRR_IC_PartIV-{}_{}_errors_iso_{}_iters.csv'.format(
+            datetime.datetime.now().strftime('%d_%m_%Y-%H_%M'), method, max_iter), header=True)
 
     # Save predicted isocratic retention times
     y_pred = pd.DataFrame(y_pred)
-    add_true_mean_std(y_true, y_pred).to_csv(os.getcwd() + "/results/2019-QSRR_IC_PartIV-{}_{}_{}_{}_{}_{}_{}_tR_iso_{}_iters.csv"
-                                             .format(datetime.datetime.now().strftime('%d%m%Y/%H:%M'), method, max_iter), header=True)
+    add_true_mean_std(y_true, y_pred).to_csv(os.getcwd() + "/results/2019-QSRR_IC_PartIV-{}_{}_tR_iso_{}_iters.csv"
+                                             .format(datetime.datetime.now().strftime('%d_%m_%Y-%H_%M'),
+                                                     method, max_iter), header=True)
 
     # Save the distribution of gradient retention time errors
     column = ['rmsre_grad']
     add_true_mean_std(None, pd.DataFrame(rmse_grad, columns=column)).to_csv(
-        os.getcwd() + '/results/2019-QSRR_IC_PartIV-{}_{}_{}_{}_{}_{}_{}_errors_grad_{}_iters.csv'.format(datetime.datetime.now().strftime('%d%m%Y/%H:%M'), method, max_iter),
+        os.getcwd() + '/results/2019-QSRR_IC_PartIV-{}_{}_errors_grad_{}_iters.csv'.format(
+            datetime.datetime.now().strftime('%d_%m_%Y-%H_%M'), method, max_iter),
         header=True)
 
     # Save predicted gradient retention times
     tg_pred = pd.DataFrame(tg_pred)
-    add_true_mean_std(y_true, y_pred).to_csv(os.getcwd() + "/results/2019-QSRR_IC_PartIV-{}_{}_{}_{}_{}_{}_{}_tR_grad_{}_iters.csv"
-                                             .format(datetime.datetime.now().strftime('%d%m%Y/%H:%M'), method, max_iter), header=True)
+    add_true_mean_std(y_true, y_pred).to_csv(os.getcwd() + "/results/2019-QSRR_IC_PartIV-{}_{}_tR_grad_{}_iters.csv"
+                                             .format(datetime.datetime.now().strftime('%d_%m_%Y-%H_%M'), method,
+                                                     max_iter), header=True)
