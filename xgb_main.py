@@ -9,10 +9,13 @@ Required packages:
 """
 import os
 import time
+import datetime
 import pandas as pd
 import numpy as np
 from scipy import optimize
-from regression import regress_xgbr
+# from regr import regress_gbr
+from regr import regress_xgbr
+# from sklearn.ensemble import GradientBoostingRegressor
 from xgboost import XGBRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split, KFold, cross_val_score
@@ -28,10 +31,10 @@ fileroot = os.getcwd() + '/data/'
 max_iter = 100
 proc_i = 12
 n_splits = 3
+# method = 'gbr'
+method = 'xbr'
 
-# opt_prompt = str(input('Initiate Optimisation (default: no) ? (yes / no) '))
-
-opt_prompt = 'yes'
+opt_prompt = str(input('Initiate Optimisation (default: no) ? (yes / no) '))
 
 if opt_prompt == 'yes':
 
@@ -49,6 +52,8 @@ if opt_prompt == 'yes':
     x_data = pd.DataFrame(sc.transform(x_data), columns=x_data.columns).values
 
     reg = XGBRegressor(objective="reg:squarederror").fit(x_train, y_train)
+    # reg = GradientBoostingRegressor()
+    # reg.fit(x_train, y_train)
 
     # QSRR Optimisation
     print('    ----------------- QSRR Optimisation ---------------')
@@ -132,13 +137,23 @@ if opt_prompt == 'yes':
                 )
     print(toprint)
 
-    with open(os.getcwd() + '/results/2019-QSRR_IC_PartIV-opt.txt', "w") as text_file:
+    with open(os.getcwd() + '/results/2019-QSRR_IC_PartIV-{}_{}_opt.txt'.format(
+            datetime.datetime.now().strftime('%d_%m_%Y-%H_%M'), method), "w") as text_file:
         text_file.write(toprint)
 
 else:
-    reg_params = {'n_estimators': 403,
-                  'learning_rate': 0.22,
-                  'max_depth': 3}
+
+    # xgBoost parameters // optimized using 3-fold CV
+    reg_params = {'n_estimators': 497,
+                  'learning_rate': 0.23,
+                  'max_depth': 2}
+
+    """
+    # GBR (sklearn) parameters // optimized using 3-fold CV
+    reg_params = {'n_estimators': 485,
+                  'learning_rate': 0.23,
+                  'max_depth': 2}
+    """
 
 
 def model_parallel(arg_iter):
@@ -170,13 +185,13 @@ def model_parallel(arg_iter):
     grad_data = np.genfromtxt(os.getcwd() + '/data/grad_data.csv', delimiter=',')
 
     # Void times
-    t_void = np.genfromtxt(os.getcwd() + '/data/t_void_test3.csv', delimiter=',')
+    t_void = np.genfromtxt(os.getcwd() + '/data/t_void.csv', delimiter=',')
 
     # Isocratic data for all the analytes+
-    iso_data = np.genfromtxt(os.getcwd() + '/data/iso_data_test3.csv', delimiter=',')
+    iso_data = np.genfromtxt(os.getcwd() + '/data/iso_data.csv', delimiter=',')
 
     # Gradient retention times
-    tg_exp = np.genfromtxt(os.getcwd() + '/data/tg_data_test3.csv', delimiter=',')
+    tg_exp = np.genfromtxt(os.getcwd() + '/data/tg_data.csv', delimiter=',')
 
     # Predicted retention times
     tg_total = model(reg, iso_data, t_void, grad_data, sc).flatten(order='F')
@@ -219,20 +234,24 @@ if __name__ == '__main__':
     # Save the distribution of isocratic retention time errors
     column = ['rmsre_train', 'rmsre_test']
     add_true_mean_std(None, pd.DataFrame(rmse_iso, columns=column)).to_csv(
-        os.getcwd() + '/results/2019-QSRR_IC_PartIV-errors_iso_{}_iters.csv'.format(max_iter), header=True)
+        os.getcwd() + '/results/2019-QSRR_IC_PartIV-{}_{}_errors_iso_{}_iters.csv'.format(
+            datetime.datetime.now().strftime('%d_%m_%Y-%H_%M'), method, max_iter), header=True)
 
     # Save predicted isocratic retention times
     y_pred = pd.DataFrame(y_pred)
-    add_true_mean_std(y_true, y_pred).to_csv(os.getcwd() + "/results/2019-QSRR_IC_PartIV-tR_iso_{}_iters.csv"
-                                             .format(max_iter), header=True)
+    add_true_mean_std(y_true, y_pred).to_csv(os.getcwd() + "/results/2019-QSRR_IC_PartIV-{}_{}_tR_iso_{}_iters.csv"
+                                             .format(datetime.datetime.now().strftime('%d_%m_%Y-%H_%M'),
+                                                     method, max_iter), header=True)
 
     # Save the distribution of gradient retention time errors
     column = ['rmsre_grad']
     add_true_mean_std(None, pd.DataFrame(rmse_grad, columns=column)).to_csv(
-        os.getcwd() + '/results/2019-QSRR_IC_PartIV-errors_grad_{}_iters.csv'.format(max_iter),
+        os.getcwd() + '/results/2019-QSRR_IC_PartIV-{}_{}_errors_grad_{}_iters.csv'.format(
+            datetime.datetime.now().strftime('%d_%m_%Y-%H_%M'), method, max_iter),
         header=True)
 
     # Save predicted gradient retention times
     tg_pred = pd.DataFrame(tg_pred)
-    add_true_mean_std(y_true, y_pred).to_csv(os.getcwd() + "/results/2019-QSRR_IC_PartIV-tR_grad_{}_iters.csv"
-                                             .format(max_iter), header=True)
+    add_true_mean_std(y_true, y_pred).to_csv(os.getcwd() + "/results/2019-QSRR_IC_PartIV-{}_{}_tR_grad_{}_iters.csv"
+                                             .format(datetime.datetime.now().strftime('%d_%m_%Y-%H_%M'), method,
+                                                     max_iter), header=True)

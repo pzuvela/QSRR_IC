@@ -1,5 +1,6 @@
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.ensemble import GradientBoostingRegressor
+from xgboost import XGBRegressor
 
 
 def regress_pls(trset, reg_params=None):
@@ -74,6 +75,21 @@ def regress_gbr(trset, reg_params=None):
 
     # Gradient Boosting Regressor
     model = GradientBoostingRegressor()
+    if reg_params is not None:
+        model.set_params(**reg_params)
+    model.fit(x_train, y_train)
+
+    y_hat_train = model.predict(x_train).ravel()
+    y_hat_test = model.predict(x_test).ravel()
+
+    return model, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test]
+
+
+def regress_xgbr(trset, reg_params=None):
+    x_train, x_test, y_train, y_test = trset
+
+    # eXtreme Gradient Boosting Regressor
+    model = XGBRegressor(objective="reg:squarederror")
     if reg_params is not None:
         model.set_params(**reg_params)
     model.fit(x_train, y_train)
