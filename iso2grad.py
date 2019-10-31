@@ -89,7 +89,7 @@ def model(qsrr_model, iso_data, t_void, grad_data, sc):
 
             # Calculate retention time for a specified gradient
             tr_g[b] = t_void[i, b] + tg1 + (t_void[i, b] - i_prev) * k1_2
-            print('# Gradient profile #{}: tG({}) = {} min'.format(i+1, b+1, tr_g[b]))
+            # print('# Gradient profile #{}: tG({}) = {} min'.format(i+1, b+1, tr_g[b]))
 
         tg_total[i] = tr_g
 

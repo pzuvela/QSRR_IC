@@ -2,9 +2,6 @@ import numpy as np
 import pandas as pd
 from scipy.stats import norm
 from sklearn.metrics import confusion_matrix
-from matplotlib import pyplot as plt
-from preprocessing import labelling
-
 
 def get_mre(y_data, y_hat):
     return 100 * np.abs((y_hat.ravel() - y_data) / y_data).mean()
@@ -67,50 +64,6 @@ def knee(x, y):
     max_del2 = np.argmax(del2)
     kneept = x[max_del2 + 2]
     return int(kneept)
-
-
-def get_stats(main_data, limxc, limdelc, models):
-    sc, sc2, clf, clf2, reg, mre_train = models
-
-    # Label for SEQUEST
-    df = labelling(main_data, limxc, limdelc, method='delc')
-    x_data = df[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
-                 'A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
-                 'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
-    y_data = df[['tR / min', 'labels']]
-
-    # Scaling
-    x_data = pd.DataFrame(sc.transform(x_data), columns=x_data.columns)
-
-    # SEQUEST Model
-    x_data_clf = x_data[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp']]
-    y_data_clf = y_data[['labels']].values.ravel()
-    y_hat_proba1 = clf.predict_proba(x_data_clf)[:, 1].ravel()
-
-    # QSRR Model
-    x_data_reg = x_data[['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
-                         'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
-    y_data_reg = y_data[['tR / min']].values.ravel()
-    y_hat_reg = reg.predict(x_data_reg).ravel()
-
-    # Label for Improved SEQUEST
-    df2 = add_error(reg, df, [x_data, y_data])
-    df2 = labelling(df2, limxc, limdelc, mre=mre_train, method='mre')
-
-    # Scaling
-    x_data2 = df2[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
-                   'A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
-                   'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V',
-                   'error']]
-    x_data2 = pd.DataFrame(sc2.transform(x_data2), columns=x_data2.columns)
-
-    # Improved SEQUEST Model
-    x_data_clf2 = x_data2[['MH+', 'Charge', 'm/z', 'XC', 'Delta Cn', 'Sp',
-                           'error']]
-    y_data_clf2 = df2[['labels']].values.ravel()
-    y_hat_proba2 = clf2.predict_proba(x_data_clf2)[:, 1].ravel()
-
-    return [y_data_clf, y_hat_proba1], [y_data_reg, y_hat_reg], [y_data_clf2, y_hat_proba2]
 
 
 def add_true_mean_std(y_true, df):
