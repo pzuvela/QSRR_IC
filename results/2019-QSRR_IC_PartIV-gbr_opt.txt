@@ -1,0 +1,8 @@
+    ----------------- Final Parameters ----------------
+    n_estimators: 485
+    learning_rate: 0.23 
+    max_depth: 2
+    Final RMSECV: 0.025
+    Final RMSEE: 0.01    Final RMSEP: 0.02
+    Optimisation Duration: 00:32:39
+    ---------------------------------------------------
