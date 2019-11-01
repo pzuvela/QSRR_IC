@@ -17,10 +17,6 @@ import datetime
 import pandas as pd
 import numpy as np
 from scipy import optimize
-# from regr import regress_gbr
-from regr import regress_xgbr
-# from sklearn.ensemble import GradientBoostingRegressor
-from xgboost import XGBRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split, KFold, cross_val_score
 from sklearn.metrics import make_scorer
@@ -50,7 +46,7 @@ Loading data into Numpy arrays:
 
 """
 # IC data for QSRR
-rawdata = pd.read_csv(data_dir + '2019-QSRR_in_IC_Part_IV_data_latest.csv')
+raw_data = pd.read_csv(data_dir + '2019-QSRR_in_IC_Part_IV_data_latest.csv')
 
 # Gradient profiles
 grad_data = np.genfromtxt(data_dir + 'grad_data.csv', delimiter=',')
@@ -64,6 +60,32 @@ iso_data = np.genfromtxt(data_dir + 'iso_data.csv', delimiter=',')
 # Gradient retention times
 tg_exp = np.genfromtxt(data_dir + 'tg_data.csv', delimiter=',')
 
+""" Data processing """
+# Drop rows with logk values of 0.000 (relative errors cannot be computed for these)
+raw_data.drop(raw_data[raw_data['logk'] == 0.000].index, inplace=True)
+
+# Drop retention times and logk values to generate the x_data matrix
+x_data = raw_data.drop(['tR', 'logk'], axis=1)
+
+# Define y_data and ravel it into a column/row vector
+y_data = raw_data[['logk']].values.ravel()
+
+# Randomly split the data into training and testing
+x_train_unscaled, x_test_unscaled, y_train, y_test = train_test_split(x_data, y_data, test_size=0.3,
+                                                                      shuffle=True)
+
+# Define a scaling object
+sc = StandardScaler()
+
+# Scale the training data and save the mean & std into the object "sc"
+x_train = pd.DataFrame(sc.fit_transform(x_train_unscaled), columns=x_train_unscaled.columns).values
+
+# Scale the testing data (using the training mean & std)
+x_test = pd.DataFrame(sc.transform(x_test_unscaled), columns=x_test_unscaled.columns).values
+
+# Scale all of the data (using the training mean & std)
+x_data = pd.DataFrame(sc.transform(x_data), columns=x_data.columns).values
+
 # Prompt for optimization // (comment for production)
 # opt_prompt = str(input('Initiate Optimisation (default: no) ? (yes / no) '))
 
@@ -72,30 +94,32 @@ opt_prompt = 'no'
 
 if opt_prompt == 'yes':
 
-    rawdata.drop(rawdata[rawdata['logk'] == 0.000].index, inplace=True)
+    # xgBoost
+    if method == 'xgb':
 
-    x_data = rawdata.drop(['tR', 'logk'], axis=1)
-    y_data = rawdata[['logk']].values.ravel()
-    x_train_unscaled, x_test_unscaled, y_train, y_test = train_test_split(x_data, y_data, test_size=0.3,
-                                                                          shuffle=True)
+        from xgboost import XGBRegressor
+        reg_opt = XGBRegressor(objective="reg:squarederror").fit(x_train, y_train)
 
-    sc = StandardScaler()
-    x_train = pd.DataFrame(sc.fit_transform(x_train_unscaled), columns=x_train_unscaled.columns).values
-    x_test = pd.DataFrame(sc.transform(x_test_unscaled), columns=x_test_unscaled.columns).values
-    x_data = pd.DataFrame(sc.transform(x_data), columns=x_data.columns).values
+    # sklearn gradient boosting
+    elif method == 'gbr':
 
-    reg = XGBRegressor(objective="reg:squarederror").fit(x_train, y_train)
-    # reg = GradientBoostingRegressor()
-    # reg.fit(x_train, y_train)
+        from sklearn.ensemble import GradientBoostingRegressor
+        reg_opt = GradientBoostingRegressor()
+        reg_opt.fit(x_train, y_train)
+
+    # Default
+    else:
+        from xgboost import XGBRegressor
+        reg_opt = XGBRegressor(objective="reg:squarederror").fit(x_train, y_train)
 
     # QSRR Optimisation
     print('    ----------------- QSRR Optimisation ---------------')
 
     # Initial Params
-    initial = reg.get_params()
-    y_hat = reg.predict(x_train)
+    initial = reg_opt.get_params()
+    y_hat = reg_opt.predict(x_train)
     initial_rmse_train = get_rmse(y_train, y_hat)
-    y_hat = reg.predict(x_test)
+    y_hat = reg_opt.predict(x_test)
     initial_rmse_test = get_rmse(y_test, y_hat)
     regopt_start = time.time()
 
@@ -129,7 +153,7 @@ if opt_prompt == 'yes':
         lr = x[1]
         max_depth = int(np.round(x[2], decimals=0))
 
-        opt_model = reg.set_params(n_estimators=n_est, learning_rate=lr, max_depth=max_depth)
+        opt_model = reg_opt.set_params(n_estimators=n_est, learning_rate=lr, max_depth=max_depth)
 
         # CV score
         scorer = make_scorer(get_rmse)
@@ -142,12 +166,12 @@ if opt_prompt == 'yes':
     reg_params = {'n_estimators': int(np.round(final_values.x[0], decimals=0)),
                   'learning_rate': final_values.x[1],
                   'max_depth': int(np.round(final_values.x[2], decimals=0))}
-    reg.set_params(**reg_params).fit(x_train, y_train)
+    reg_opt.set_params(**reg_params).fit(x_train, y_train)
 
     # Final Params
-    y_hat = reg.predict(x_train)
+    y_hat = reg_opt.predict(x_train)
     final_rmse_train = get_rmse(y_train, y_hat)
-    y_hat = reg.predict(x_test)
+    y_hat = reg_opt.predict(x_test)
     final_rmse_test = get_rmse(y_test, y_hat)
     regopt_time = time.time() - regopt_start
 
@@ -177,41 +201,51 @@ if opt_prompt == 'yes':
 else:
 
     # xgBoost parameters // optimized using 3-fold CV
-    reg_params = {'n_estimators': 497,
-                  'learning_rate': 0.23,
-                  'max_depth': 2}
+    if method == 'xgb':
 
-    """
+        reg_params = {'n_estimators': 497,
+                      'learning_rate': 0.23,
+                      'max_depth': 2}
+
     # GBR (sklearn) parameters // optimized using 3-fold CV
-    reg_params = {'n_estimators': 485,
-                  'learning_rate': 0.23,
-                  'max_depth': 2}
-    """
+    elif method == 'gbr':
+
+        reg_params = {'n_estimators': 485,
+                      'learning_rate': 0.23,
+                      'max_depth': 2}
+
+    # Default
+    else:
+
+        reg_params = {'n_estimators': 497,
+                      'learning_rate': 0.23,
+                      'max_depth': 2}
 
 
 def model_parallel(arg_iter):
 
-    x_data = rawdata.drop(['tR', 'logk'], axis=1)
-    y_data = rawdata[['logk']].values.ravel()
-    x_train_unscaled, x_test_unscaled, y_train, y_test = train_test_split(x_data, y_data, test_size=0.3, shuffle=True)
-
-    sc = StandardScaler()
-    x_train = pd.DataFrame(sc.fit_transform(x_train_unscaled), columns=x_train_unscaled.columns).values
-    x_test = pd.DataFrame(sc.transform(x_test_unscaled), columns=x_test_unscaled.columns).values
-    x_data = pd.DataFrame(sc.transform(x_data), columns=x_data.columns).values
     trset = [x_train, x_test, y_train, y_test]
 
-    # GBR
-    # reg, reg_traindata, reg_testdata = regress_gbr(trset, reg_params=None)
-
     # XGB
-    reg, reg_traindata, reg_testdata = regress_xgbr(trset, reg_params=reg_params)
+    if method == 'xgb':
+        from regr import regress_xgbr
+        reg, reg_traindata, reg_testdata = regress_xgbr(trset, reg_params=reg_params)
+
+    # GBR
+    elif method == 'gbr':
+        from regr import regress_gbr
+        reg, reg_traindata, reg_testdata = regress_gbr(trset, reg_params=None)
+
+    # Default
+    else:
+        from regr import regress_xgbr
+        reg, reg_traindata, reg_testdata = regress_xgbr(trset, reg_params=reg_params)
 
     y_hat_train = reg.predict(x_train)
     rmsre_train = get_rmse(y_train, y_hat_train)
     y_hat_test = reg.predict(x_test)
     rmsre_test = get_rmse(y_test, y_hat_test)
-    y_hat = reg.predict(x_data)
+    y_data_hat = reg.predict(x_data)
 
     # Predicted retention times
     tg_total = model(reg, iso_data, t_void, grad_data, sc).flatten(order='F')
@@ -219,7 +253,7 @@ def model_parallel(arg_iter):
     rmsre_grad = get_rmse(tg_exp, tg_total)
 
     print('Iteration #{}/{} completed'.format(arg_iter[0] + 1, max_iter))
-    return rmsre_train, rmsre_test, y_data, y_hat, rmsre_grad, tg_exp, tg_total
+    return rmsre_train, rmsre_test, y_data, y_data_hat, rmsre_grad, tg_exp, tg_total
 
 
 if __name__ == '__main__':
