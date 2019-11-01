@@ -13,22 +13,21 @@ Usage:
 main.py max_iter count proc_i method opt_prompt n_splits (opt)
 
 """
-
+from os import getcwd
 from sys import argv
-import os
-import time
-import datetime
-import pandas as pd
-import numpy as np
+from time import time, strftime, gmtime
+from datetime import datetime
+from pandas import read_csv, DataFrame, concat
+from numpy import genfromtxt, round, mean
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split, KFold, cross_val_score
 from sklearn.metrics import make_scorer
 from multiprocessing import Pool
-from func import add_true_mean_std, get_rmse
+from func import get_rmse
 from iso2grad import model
 
 # Directories
-curr_dir = os.getcwd()
+curr_dir = getcwd()
 data_dir = curr_dir + '/data/'
 results_dir = curr_dir + '/results/'
 
@@ -63,19 +62,19 @@ Loading data into Numpy arrays:
 5) Experimental gradient retention times
 """
 # IC data for QSRR
-raw_data = pd.read_csv(data_dir + '2019-QSRR_in_IC_Part_IV_data_latest.csv')
+raw_data = read_csv(data_dir + '2019-QSRR_in_IC_Part_IV_data_latest.csv')
 
 # Gradient profiles
-grad_data = np.genfromtxt(data_dir + 'grad_data.csv', delimiter=',')
+grad_data = genfromtxt(data_dir + 'grad_data.csv', delimiter=',')
 
 # Void times
-t_void = np.genfromtxt(data_dir + 't_void.csv', delimiter=',')
+t_void = genfromtxt(data_dir + 't_void.csv', delimiter=',')
 
 # Isocratic data for all the analytes
-iso_data = np.genfromtxt(data_dir + 'iso_data.csv', delimiter=',')
+iso_data = genfromtxt(data_dir + 'iso_data.csv', delimiter=',')
 
 # Gradient retention times
-tg_exp = np.genfromtxt(data_dir + 'tg_data.csv', delimiter=',')
+tg_exp = genfromtxt(data_dir + 'tg_data.csv', delimiter=',')
 
 """ Data processing """
 # Drop rows with logk values of 0.000 (relative errors cannot be computed for these)
@@ -95,13 +94,13 @@ x_train_unscaled, x_test_unscaled, y_train, y_test = train_test_split(x_data, y_
 sc = StandardScaler()
 
 # Scale the training data and save the mean & std into the object "sc"
-x_train = pd.DataFrame(sc.fit_transform(x_train_unscaled), columns=x_train_unscaled.columns).values
+x_train = DataFrame(sc.fit_transform(x_train_unscaled), columns=x_train_unscaled.columns).values
 
 # Scale the testing data (using the training mean & std)
-x_test = pd.DataFrame(sc.transform(x_test_unscaled), columns=x_test_unscaled.columns).values
+x_test = DataFrame(sc.transform(x_test_unscaled), columns=x_test_unscaled.columns).values
 
 # Scale all of the data (using the training mean & std)
-x_data = pd.DataFrame(sc.transform(x_data), columns=x_data.columns).values
+x_data = DataFrame(sc.transform(x_data), columns=x_data.columns).values
 
 # Hyper-parameter optimization
 if opt_prompt == 'yes':
@@ -139,7 +138,7 @@ if opt_prompt == 'yes':
     initial_rmse_train = get_rmse(y_train, y_hat)
     y_hat = reg_opt.predict(x_test)
     initial_rmse_test = get_rmse(y_test, y_hat)
-    regopt_start = time.time()
+    regopt_start = time()
 
     toprint = '    ---------------- Initial Parameters ---------------\n' \
               '    n_estimators: {:.0f}\n' \
@@ -167,9 +166,9 @@ if opt_prompt == 'yes':
     # Creating optimisation function, needs to be in each
     def reg_objective(x):
         # Descaling Parameters
-        n_est = int(np.round(x[0], decimals=0))
+        n_est = int(round(x[0], decimals=0))
         lr = x[1]
-        max_depth = int(np.round(x[2], decimals=0))
+        max_depth = int(round(x[2], decimals=0))
 
         opt_model = reg_opt.set_params(n_estimators=n_est, learning_rate=lr, max_depth=max_depth)
 
@@ -177,14 +176,14 @@ if opt_prompt == 'yes':
         scorer = make_scorer(get_rmse)
         score = cross_val_score(opt_model, x_train, y_train, cv=KFold(n_splits=n_splits), scoring=scorer)
 
-        return np.mean(score)
+        return mean(score)
 
 
     final_values = optimize.differential_evolution(reg_objective, bounds, workers=-1, updating='deferred',
                                                    mutation=(1.5, 1.9), popsize=20)
-    reg_params = {'n_estimators': int(np.round(final_values.x[0], decimals=0)),
+    reg_params = {'n_estimators': int(round(final_values.x[0], decimals=0)),
                   'learning_rate': final_values.x[1],
-                  'max_depth': int(np.round(final_values.x[2], decimals=0))}
+                  'max_depth': int(round(final_values.x[2], decimals=0))}
     reg_opt.set_params(**reg_params).fit(x_train, y_train)
 
     # Final Params
@@ -192,7 +191,7 @@ if opt_prompt == 'yes':
     final_rmse_train = get_rmse(y_train, y_hat)
     y_hat = reg_opt.predict(x_test)
     final_rmse_test = get_rmse(y_test, y_hat)
-    regopt_time = time.time() - regopt_start
+    regopt_time = time() - regopt_start
 
     toprint = '    ----------------- Final Parameters ----------------\n' \
               '    n_estimators: {:.0f}\n' \
@@ -203,18 +202,18 @@ if opt_prompt == 'yes':
               '    Final RMSEP: {:.2f}\n' \
               '    Optimisation Duration: {}\n' \
               '    ---------------------------------------------------\n' \
-        .format(int(np.round(final_values.x[0], decimals=0)),
+        .format(int(round(final_values.x[0], decimals=0)),
                 final_values.x[1],
-                int(np.round(final_values.x[2], decimals=0)),
+                int(round(final_values.x[2], decimals=0)),
                 final_values.fun,
                 final_rmse_train,
                 final_rmse_test,
-                time.strftime("%H:%M:%S", time.gmtime(regopt_time))
+                strftime("%H:%M:%S", gmtime(regopt_time))
                 )
     print(toprint)
 
     with open(results_dir + '2019-QSRR_IC_PartIV-{}_{}_opt_run_{}.txt'.format(
-            datetime.datetime.now().strftime('%d_%m_%Y-%H_%M'), method, count), "w") as text_file:
+            datetime.now().strftime('%d_%m_%Y-%H_%M'), method, count), "w") as text_file:
         text_file.write(toprint)
 
 else:
@@ -278,7 +277,7 @@ def model_parallel(arg_iter):
 if __name__ == '__main__':
     # Display initialization and initialize start time
     print('Initiating with {} iterations'.format(max_iter))
-    start_time = time.time()
+    start_time = time()
 
     # Start Parallel Pool with "proc_i" processes
     p = Pool(processes=proc_i)
@@ -299,31 +298,31 @@ if __name__ == '__main__':
     tg_pred = [models_final[i][6] for i in range(max_iter)]
 
     # Compute and display run-time
-    run_time = time.time() - start_time
+    run_time = time() - start_time
     print('Simulation Completed')
-    print('Duration: {}\n'.format(time.strftime("%H:%M:%S", time.gmtime(run_time))))
+    print('Duration: {}\n'.format(strftime("%H:%M:%S", gmtime(run_time))))
 
     # Save the distribution of isocratic retention time errors
-    column = ['rmsre_train', 'rmsre_test']
-    add_true_mean_std(None, pd.DataFrame(rmse_iso, columns=column)).to_csv(
-        results_dir + '2019-QSRR_IC_PartIV-{}_{}_errors_iso_{}_iters_run_{}.csv'.format(
-            datetime.datetime.now().strftime('%d_%m_%Y-%H_%M'), method, max_iter, count), header=True)
+    DataFrame(rmse_iso, columns=['rmsre_train', 'rmsre_test']).to_csv(results_dir + '2019-QSRR_IC_PartIV-{}_{}_errors_'
+                                                                                    'iso_{}_iters_run_{}.csv'.
+                                                                      format(datetime.now().strftime('%d_%m_%Y-%H_%M'),
+                                                                             method, max_iter, count), header=True)
 
     # Save predicted isocratic retention times
-    y_pred = pd.DataFrame(y_pred)
-    add_true_mean_std(y_true, y_pred).to_csv(results_dir + '2019-QSRR_IC_PartIV-{}_{}_tR_iso_{}_iters_run_{}.csv'
-                                             .format(datetime.datetime.now().strftime('%d_%m_%Y-%H_%M'),
-                                                     method, max_iter, count), header=True)
+    y_pred = DataFrame(y_pred)
+    y_true = DataFrame(y_true.ravel())
+    concat([y_true, y_pred]).to_csv(results_dir + '2019-QSRR_IC_PartIV-{}_{}_tR_iso_{}_iters_run_{}.csv'
+                                    .format(datetime.now().strftime('%d_%m_%Y-%H_%M'),
+                                            method, max_iter, count), header=True)
 
     # Save the distribution of gradient retention time errors
-    column = ['rmsre_grad']
-    add_true_mean_std(None, pd.DataFrame(rmse_grad, columns=column)).to_csv(
+    DataFrame(rmse_grad, columns=['rmsre_grad']).to_csv(
         results_dir + '2019-QSRR_IC_PartIV-{}_{}_errors_grad_{}_iters_run_{}.csv'.format(
-            datetime.datetime.now().strftime('%d_%m_%Y-%H_%M'), method, max_iter, count),
-        header=True)
+            datetime.now().strftime('%d_%m_%Y-%H_%M'), method, max_iter, count), header=True)
 
     # Save predicted gradient retention times
-    tg_pred = pd.DataFrame(tg_pred)
-    add_true_mean_std(y_true, y_pred).to_csv(results_dir + '2019-QSRR_IC_PartIV-{}_{}_tR_grad_{}_iters_run_{}.csv'
-                                             .format(datetime.datetime.now().strftime('%d_%m_%Y-%H_%M'), method,
-                                                     max_iter, count), header=True)
+    tg_pred = DataFrame(tg_pred)
+    tg_true = DataFrame(tg_true.ravel())
+    concat([tg_true, tg_pred]).to_csv(results_dir + '2019-QSRR_IC_PartIV-{}_{}_tR_grad_{}_iters_run_{}.csv'
+                                      .format(datetime.now().strftime('%d_%m_%Y-%H_%M'), method,
+                                              max_iter, count), header=True)

@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.metrics import confusion_matrix
+from glob import glob
 
 
 def get_mre(y_data, y_hat):
@@ -102,6 +103,16 @@ def get_limits(file):
         print(towrite)
     pd.DataFrame(stats_list, columns=['label', 'mean', 'lower_limit', 'upper_limit', 'lower_value', 'upper_value'])\
         .to_csv('{}_stats.csv'.format(file[:-4]), index=False)
+
+
+def merge_files(file_str):
+    file_df = pd.DataFrame()
+    for file in glob(file_str):
+        print('Processing', file, '...')
+        file_df = file_df.append(pd.read_csv(file), sort=False)
+    file_df = file_df[~file_df['Unnamed: 0'].str.contains('actual|mean|lower_limit|upper_limit|lower_value|'
+                                                          'upper_value')].reset_index(drop=True)
+    return file_df
 
 
 """ 

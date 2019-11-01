@@ -1,13 +1,28 @@
-import numpy as np
+"""
+
+ISO2GRAD model v1
+
+Function to predict gradient retention times from an isocratic model
+
+Reference: Bolanca, T. et al. Development of an ion chromatographic gradient retention model from isocratic elution
+           experiments. J. Chromatogr. A 2006, 1121, 228-235. (doi:10.1016/j.chroma.2006.04.036)
+
+"""
+
+# Importing modules/classes from the numpy package
+from numpy import zeros, size, arange, hstack
+
+""" 
+Notes on the inputs to the function model:
+1) qsrr_model is an object with the fitted model to predict logk
+2) iso_data is a numpy matrix comprising of model predictors:
+   [Alcohol (1/0) Dragon descriptors]; rows are analytes
+3) t_void is a vector of void times (gradient elution); rows are gradient profiles, columns are analytes
+4) grad_data is a numpy matrix comprising of:
+   [tG_1, c(KOH)_1, slope_1, tG_2, c(KOH)_2, slope_2, tG_3, c(KOH)_3, slope_3, ...]; rows are gradient profiles
+"""
 
 
-# Notes:
-# model is an object with the fitted model to predict logk
-# iso_data is a numpy matrix comprising of model predictors:
-# [Alcohol (1/0) Dragon descriptors]; rows are analytes
-# t_void is a vector of void times (gradient elution); rows are gradient profiles, columns are analytes
-# grad_data is a numpy matrix comprising of:
-# [tG_1, c(KOH)_1, slope_1, tG_2, c(KOH)_2, slope_2, tG_3, c(KOH)_3, slope_3, ...]; rows are gradient profiles
 def model(qsrr_model, iso_data, t_void, grad_data, sc):
 
     # Increase all the matrix elements by an arbitrarily small number to prevent zero values
@@ -17,24 +32,24 @@ def model(qsrr_model, iso_data, t_void, grad_data, sc):
     del_t = 0.01
 
     # Pre-define the matrix of gradient retention times
-    tg_total = np.zeros((np.size(t_void, axis=0), np.size(t_void, axis=1)))
+    tg_total = zeros((size(t_void, axis=0), size(t_void, axis=1)))
 
     # iso2grad algorithm
     # Loop through the gradient profiles
-    for i in range(int(np.size(grad_data, axis=0))):
+    for i in range(int(size(grad_data, axis=0))):
 
         # Pre-define tg1, tg2, i_prev & k1_2
-        tg1, tg2, i_prev, i_partial, k1_2 = np.zeros((5, 1))
-        tr_g = np.zeros(int(np.size(t_void, axis=1)))
+        tg1, tg2, i_prev, i_partial, k1_2 = zeros((5, 1))
+        tr_g = zeros(int(size(t_void, axis=1)))
 
         # Loop through the analytes
-        for b in range(int(np.size(t_void, axis=1))):
+        for b in range(int(size(t_void, axis=1))):
 
             # Initialize next integration step
             i_next = 0
 
             # Loop through the gradient segments
-            for p in range(0, int(np.size(grad_data, axis=1)-2), 3):
+            for p in range(0, int(size(grad_data, axis=1)-2), 3):
 
                 # First segment of the gradient
                 ti1 = grad_data[i, p]
@@ -46,7 +61,7 @@ def model(qsrr_model, iso_data, t_void, grad_data, sc):
                 conc2 = grad_data[i, p+4]
 
                 # Loop through the retention times
-                for tg in np.arange(ti1, ti2, del_t):
+                for tg in arange(ti1, ti2, del_t):
 
                     tg1 = tg
                     tg2 = tg1 + del_t
@@ -71,8 +86,8 @@ def model(qsrr_model, iso_data, t_void, grad_data, sc):
                     i_prev = i_next
 
                     # Predict k from the machine learning model for the two gradient concentrations
-                    k1 = 10 ** qsrr_model.predict(sc.transform(np.hstack((conc_grad1, iso_data[b])).reshape((1, -1))))
-                    k2 = 10 ** qsrr_model.predict(sc.transform(np.hstack((conc_grad2, iso_data[b])).reshape((1, -1))))
+                    k1 = 10 ** qsrr_model.predict(sc.transform(hstack((conc_grad1, iso_data[b])).reshape((1, -1))))
+                    k2 = 10 ** qsrr_model.predict(sc.transform(hstack((conc_grad2, iso_data[b])).reshape((1, -1))))
 
                     # Average k between the two gradient concentrations
                     k1_2 = (k2 + k1) / 2
