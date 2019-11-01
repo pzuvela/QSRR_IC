@@ -20,7 +20,6 @@ import time
 import datetime
 import pandas as pd
 import numpy as np
-from scipy import optimize
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split, KFold, cross_val_score
 from sklearn.metrics import make_scorer
@@ -106,10 +105,10 @@ x_test = pd.DataFrame(sc.transform(x_test_unscaled), columns=x_test_unscaled.col
 # Scale all of the data (using the training mean & std)
 x_data = pd.DataFrame(sc.transform(x_data), columns=x_data.columns).values
 
-# Prompt for optimization // (comment for production)
-# opt_prompt = str(input('Initiate Optimisation (default: no) ? (yes / no) '))
-
 if opt_prompt == 'yes':
+
+    # Import scipy optimize
+    from scipy import optimize
 
     # xgBoost
     if method == 'xgb':
@@ -165,7 +164,6 @@ if opt_prompt == 'yes':
     max_depth_min, max_depth_max = 1, 5
     bounds = optimize.Bounds([n_est_min, lr_min, max_depth_min],
                              [n_est_max, lr_max, max_depth_max])
-
 
     # Creating optimisation function, needs to be in each
     def reg_objective(x):
