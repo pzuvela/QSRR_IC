@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-from scipy.stats import norm
 from sklearn.metrics import confusion_matrix
 
 
@@ -24,21 +23,6 @@ def get_mcc(y_data, y_hat):
 def fileprint(string, directory):
     with open(directory, 'a') as f:
         print(string, file=f)
-
-
-def histplot(y_data, title, x_axis):
-    fig, ax = plt.subplots()
-    ax.hist(y_data, bins=20, density=True)
-    x_min, x_max = ax.get_xlim()
-    y_mean, y_std = norm.fit(y_data)
-    p = norm.pdf(np.linspace(x_min, x_max, 100), y_mean, y_std)
-    ax.plot(np.linspace(x_min, x_max, 100), p)
-    ax.set_title(title)
-    ax.set_ylabel('Probability Density')
-    ax.set_xlabel(x_axis)
-    ax.text(0.2, 0.9, s='Mean:{:.2f} +/- {:.2f}'.format(y_mean, 3*y_std), horizontalalignment='center',
-            verticalalignment='center', transform=ax.transAxes, bbox=dict(facecolor='red', alpha=0.5))
-    return fig
 
 
 def add_error(reg, rawdata, scaleddata):
@@ -118,3 +102,23 @@ def get_limits(file):
         print(towrite)
     pd.DataFrame(stats_list, columns=['label', 'mean', 'lower_limit', 'upper_limit', 'lower_value', 'upper_value'])\
         .to_csv('{}_stats.csv'.format(file[:-4]), index=False)
+
+
+""" 
+Deprecated functions:
+
+def histplot(y_data, title, x_axis):
+    fig, ax = plt.subplots()
+    ax.hist(y_data, bins=20, density=True)
+    x_min, x_max = ax.get_xlim()
+    y_mean, y_std = norm.fit(y_data)
+    p = norm.pdf(np.linspace(x_min, x_max, 100), y_mean, y_std)
+    ax.plot(np.linspace(x_min, x_max, 100), p)
+    ax.set_title(title)
+    ax.set_ylabel('Probability Density')
+    ax.set_xlabel(x_axis)
+    ax.text(0.2, 0.9, s='Mean:{:.2f} +/- {:.2f}'.format(y_mean, 3*y_std), horizontalalignment='center',
+            verticalalignment='center', transform=ax.transAxes, bbox=dict(facecolor='red', alpha=0.5))
+    return fig
+
+"""
