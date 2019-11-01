@@ -85,7 +85,7 @@ def add_mean_std(df):
     mean = df.mean(axis=0).ravel()
     std = df.std(axis=0).ravel()
     stats = [mean, std]
-    df_stats = pd.DataFrame(stats, index=['mean', 'std'])
+    df_stats = pd.DataFrame(stats, index=['mean', 'std'], columns=df.columns)
     df = pd.concat([df_stats, df])
     return df
 
@@ -118,7 +118,7 @@ def merge_files(file_str, tr_exp=None):
 
     for file in glob(file_str):
         print('Processing', file, '...')
-        file_df = file_df.append(pd.read_csv(file), sort=False)
+        file_df = file_df.append(pd.read_csv(file, index_col=0), sort=False)
 
     if tr_exp is not None:
         df_merged = add_true_mean_std(tr_exp, file_df)

@@ -38,7 +38,7 @@ logk_iso_exp = raw_data[['logk']].values.ravel()
 tg_exp = genfromtxt(data_dir + 'tg_data.csv', delimiter=',')
 
 # Merge isocratic QSRR model errors and add C.I.
-merge_files(results_dir+'*{}_errors_iso*{}_iters_run*'.format(method, max_iter)).to_csv(
+merge_files(results_dir+'*{}_errors_iso*{}_iters_run*'.format(method, max_iter), tr_exp=None).to_csv(
     results_dir + '2019-QSRR_IC_PartIV-{}_{}_errors_iso_{}_iters_merged.csv'
     .format(datetime.now().strftime('%d_%m_%Y-%H_%M'), method, max_iter), header=True)
 
