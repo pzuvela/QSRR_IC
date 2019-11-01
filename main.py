@@ -310,7 +310,7 @@ if __name__ == '__main__':
 
     # Save predicted isocratic retention times
     y_pred = DataFrame(y_pred)
-    y_true = DataFrame(y_true.ravel())
+    y_true = DataFrame(y_true).T
     concat([y_true, y_pred]).to_csv(results_dir + '2019-QSRR_IC_PartIV-{}_{}_tR_iso_{}_iters_run_{}.csv'
                                     .format(datetime.now().strftime('%d_%m_%Y-%H_%M'),
                                             method, max_iter, count), header=True)
@@ -322,7 +322,7 @@ if __name__ == '__main__':
 
     # Save predicted gradient retention times
     tg_pred = DataFrame(tg_pred)
-    tg_true = DataFrame(tg_true.ravel())
+    tg_true = DataFrame(tg_true).T
     concat([tg_true, tg_pred]).to_csv(results_dir + '2019-QSRR_IC_PartIV-{}_{}_tR_grad_{}_iters_run_{}.csv'
                                       .format(datetime.now().strftime('%d_%m_%Y-%H_%M'), method,
                                               max_iter, count), header=True)
