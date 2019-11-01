@@ -9,8 +9,12 @@ Required packages:
 4) xgBoost
 5) scikit-learn
 
+Usage:
+xgb_main.py max_iter count proc_i method opt_prompt n_splits (opt)
+
 """
 
+from sys import argv
 import os
 import time
 import datetime
@@ -29,12 +33,28 @@ curr_dir = os.getcwd()
 data_dir = curr_dir + '/data/'
 results_dir = curr_dir + '/results/'
 
-# Fixed variables
-max_iter = 1000
-proc_i = 4
-n_splits = 3
-# method = 'gbr'
-method = 'xbr'
+""" Fixed variables 
+
+Input arguments:
+1) max_iter     : number of iterations
+2) count        : run count
+3) proc_i       : number of processes
+4) method       : regression method (currently implemented: xgb, gbr)
+5) opt_prompt   : prompt for optimization of hyper-parameters (yes, no, default: no)
+3) n_splits     : number of cross-validation splits (for optimization, if opt_prompt is no, then n_splits is [])
+
+ 
+"""
+max_iter = argv[1]
+count = argv[2]
+proc_i = argv[3]
+method = argv[4]
+opt_prompt = argv[5]
+
+if opt_prompt == "yes":
+    n_splits = argv[6]
+else:
+    n_splits = []
 
 """ 
 Loading data into Numpy arrays:
@@ -88,9 +108,6 @@ x_data = pd.DataFrame(sc.transform(x_data), columns=x_data.columns).values
 
 # Prompt for optimization // (comment for production)
 # opt_prompt = str(input('Initiate Optimisation (default: no) ? (yes / no) '))
-
-# String optimization or not // (uncomment for production)
-opt_prompt = 'no'
 
 if opt_prompt == 'yes':
 
@@ -194,8 +211,8 @@ if opt_prompt == 'yes':
                 )
     print(toprint)
 
-    with open(results_dir + '2019-QSRR_IC_PartIV-{}_{}_opt.txt'.format(
-            datetime.datetime.now().strftime('%d_%m_%Y-%H_%M'), method), "w") as text_file:
+    with open(results_dir + '2019-QSRR_IC_PartIV-{}_{}_{}_opt.txt'.format(
+            datetime.datetime.now().strftime('%d_%m_%Y-%H_%M'), method, count), "w") as text_file:
         text_file.write(toprint)
 
 else:
