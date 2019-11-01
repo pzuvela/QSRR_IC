@@ -103,6 +103,7 @@ x_test = pd.DataFrame(sc.transform(x_test_unscaled), columns=x_test_unscaled.col
 # Scale all of the data (using the training mean & std)
 x_data = pd.DataFrame(sc.transform(x_data), columns=x_data.columns).values
 
+# Hyper-parameter optimization
 if opt_prompt == 'yes':
 
     # Import scipy optimize
@@ -240,6 +241,7 @@ else:
                       'max_depth': 2}
 
 
+# Defining a function to feed to multiprocessing
 def model_parallel(arg_iter):
     trset = [x_train, x_test, y_train, y_test]
 
