@@ -42,7 +42,6 @@ Input arguments:
 5) opt_prompt   : prompt for optimization of hyper-parameters (yes, no, default: no)
 3) n_splits     : number of cross-validation splits (for optimization, if opt_prompt is no, then n_splits is [])
 
-
 """
 max_iter = int(argv[1])
 count = int(argv[2])
@@ -62,7 +61,6 @@ Loading data into Numpy arrays:
 3) Void times
 4) Isocratic data for all the analytes (without c(eluent), that is approximated using the iso2grad model)
 5) Experimental gradient retention times
-
 """
 # IC data for QSRR
 raw_data = pd.read_csv(data_dir + '2019-QSRR_in_IC_Part_IV_data_latest.csv')
