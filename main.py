@@ -44,14 +44,14 @@ Input arguments:
 
 
 """
-max_iter = argv[1]
-count = argv[2]
-proc_i = argv[3]
-method = argv[4]
-opt_prompt = argv[5]
+max_iter = int(argv[1])
+count = int(argv[2])
+proc_i = int(argv[3])
+method = str(argv[4])
+opt_prompt = str(argv[5])
 
 if opt_prompt == "yes":
-    n_splits = argv[6]
+    n_splits = int(argv[6])
 else:
     n_splits = []
 
