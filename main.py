@@ -17,7 +17,7 @@ from os import getcwd
 from sys import argv
 from time import time, strftime, gmtime
 from datetime import datetime
-from pandas import read_csv, DataFrame, concat
+from pandas import read_csv, DataFrame
 from numpy import genfromtxt, round, mean
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split, KFold, cross_val_score
@@ -179,7 +179,7 @@ if opt_prompt == 'yes':
         return mean(score)
 
 
-    final_values = optimize.differential_evolution(reg_objective, bounds, workers=-1, updating='deferred',
+    final_values = optimize.differential_evolution(reg_objective, bounds, workers=proc_i, updating='deferred',
                                                    mutation=(1.5, 1.9), popsize=20)
     reg_params = {'n_estimators': int(round(final_values.x[0], decimals=0)),
                   'learning_rate': final_values.x[1],
@@ -310,10 +310,9 @@ if __name__ == '__main__':
 
     # Save predicted isocratic retention times
     y_pred = DataFrame(y_pred)
-    y_true = DataFrame(y_true).T
-    concat([y_true, y_pred]).to_csv(results_dir + '2019-QSRR_IC_PartIV-{}_{}_tR_iso_{}_iters_run_{}.csv'
-                                    .format(datetime.now().strftime('%d_%m_%Y-%H_%M'),
-                                            method, max_iter, count), header=True)
+    y_pred.to_csv(results_dir + '2019-QSRR_IC_PartIV-{}_{}_logk_iso_{}_iters_run_{}.csv'
+                  .format(datetime.now().strftime('%d_%m_%Y-%H_%M'),
+                          method, max_iter, count), header=True)
 
     # Save the distribution of gradient retention time errors
     DataFrame(rmse_grad, columns=['rmsre_grad']).to_csv(
@@ -322,7 +321,6 @@ if __name__ == '__main__':
 
     # Save predicted gradient retention times
     tg_pred = DataFrame(tg_pred)
-    tg_true = DataFrame(tg_true).T
-    concat([tg_true, tg_pred]).to_csv(results_dir + '2019-QSRR_IC_PartIV-{}_{}_tR_grad_{}_iters_run_{}.csv'
-                                      .format(datetime.now().strftime('%d_%m_%Y-%H_%M'), method,
-                                              max_iter, count), header=True)
+    tg_pred.to_csv(results_dir + '2019-QSRR_IC_PartIV-{}_{}_tR_grad_{}_iters_run_{}.csv'
+                   .format(datetime.now().strftime('%d_%m_%Y-%H_%M'), method,
+                           max_iter, count), header=True)

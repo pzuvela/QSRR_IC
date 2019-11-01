@@ -57,11 +57,17 @@ def add_true_mean_std(y_true, df):
     for i in range(len(df.columns)):
         label = df.columns[i]
         col_values = np.sort(df[label].values)
-        j = int(len(col_values) * 2.5 / 100)
-        k = int(len(col_values) - j)
         mean = col_values.mean()
+        j = int(len(col_values) * 2.5 / 100)
         lower_value = col_values[j]
-        upper_value = col_values[k]
+
+        try:
+            k = int(len(col_values) - j)
+            upper_value = col_values[k]
+        except IndexError:  # in cases where j = 0 and index exceeds
+            k = int(len(col_values) - j) - 1
+            upper_value = col_values[k]
+
         lower_limit = mean - lower_value
         upper_limit = upper_value - mean
         stats.append([mean, lower_limit, upper_limit, lower_value, upper_value])
@@ -105,18 +111,25 @@ def get_limits(file):
         .to_csv('{}_stats.csv'.format(file[:-4]), index=False)
 
 
-def merge_files(file_str):
+# Function to merge files from parallel runs
+def merge_files(file_str, tr_exp=None):
+
     file_df = pd.DataFrame()
+
     for file in glob(file_str):
         print('Processing', file, '...')
         file_df = file_df.append(pd.read_csv(file), sort=False)
-    file_df = file_df[~file_df['Unnamed: 0'].str.contains('actual|mean|lower_limit|upper_limit|lower_value|'
-                                                          'upper_value')].reset_index(drop=True)
-    return file_df
+
+    if tr_exp is not None:
+        df_merged = add_true_mean_std(tr_exp, file_df)
+    else:
+        df_merged = add_mean_std(file_df)
+
+    return df_merged
 
 
-""" 
-Deprecated functions:
+"""
+Deprecated functions & lines:
 
 def histplot(y_data, title, x_axis):
     fig, ax = plt.subplots()
@@ -131,5 +144,8 @@ def histplot(y_data, title, x_axis):
     ax.text(0.2, 0.9, s='Mean:{:.2f} +/- {:.2f}'.format(y_mean, 3*y_std), horizontalalignment='center',
             verticalalignment='center', transform=ax.transAxes, bbox=dict(facecolor='red', alpha=0.5))
     return fig
+    
+file_df = file_df[~file_df['Unnamed: 0'].str.contains('actual|mean|lower_limit|upper_limit|lower_value|'
+                                                  'upper_value')].reset_index(drop=True)
 
 """
