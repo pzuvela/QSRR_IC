@@ -1,12 +1,16 @@
 """
-QSRR model development in IC
+
+QSRR model development in IC Part IV project
+
 Required packages:
 1) Pandas
 2) Numpy
 3) Scipy
 4) xgBoost
 5) scikit-learn
+
 """
+
 import os
 import time
 import datetime
@@ -30,17 +34,44 @@ data_dir = curr_dir + '/data/'
 results_dir = curr_dir + '/results/'
 
 # Fixed variables
-max_iter = 100
+max_iter = 1000
 proc_i = 4
 n_splits = 3
 # method = 'gbr'
 method = 'xbr'
 
-opt_prompt = str(input('Initiate Optimisation (default: no) ? (yes / no) '))
+""" 
+Loading data into Numpy arrays:
+1) IC data for QSRR model building (at all experimental isocratic concentrations) 
+2) Gradient profiles
+3) Void times
+4) Isocratic data for all the analytes (without c(eluent), that is approximated using the iso2grad model)
+5) Experimental gradient retention times
+
+"""
+# IC data for QSRR
+rawdata = pd.read_csv(data_dir + '2019-QSRR_in_IC_Part_IV_data_latest.csv')
+
+# Gradient profiles
+grad_data = np.genfromtxt(data_dir + 'grad_data.csv', delimiter=',')
+
+# Void times
+t_void = np.genfromtxt(data_dir + 't_void.csv', delimiter=',')
+
+# Isocratic data for all the analytes
+iso_data = np.genfromtxt(data_dir + 'iso_data.csv', delimiter=',')
+
+# Gradient retention times
+tg_exp = np.genfromtxt(data_dir + 'tg_data.csv', delimiter=',')
+
+# Prompt for optimization // (comment for production)
+# opt_prompt = str(input('Initiate Optimisation (default: no) ? (yes / no) '))
+
+# String optimization or not // (uncomment for production)
+opt_prompt = 'no'
 
 if opt_prompt == 'yes':
 
-    rawdata = pd.read_csv(data_dir + '2019-QSRR_in_IC_Part_IV_data_latest.csv')
     rawdata.drop(rawdata[rawdata['logk'] == 0.000].index, inplace=True)
 
     x_data = rawdata.drop(['tR', 'logk'], axis=1)
@@ -157,22 +188,9 @@ else:
                   'max_depth': 2}
     """
 
-# Gradient profiles
-grad_data = np.genfromtxt(data_dir + 'grad_data.csv', delimiter=',')
-
-# Void times
-t_void = np.genfromtxt(data_dir + 't_void.csv', delimiter=',')
-
-# Isocratic data for all the analytes
-iso_data = np.genfromtxt(data_dir + 'iso_data.csv', delimiter=',')
-
-# Gradient retention times
-tg_exp = np.genfromtxt(data_dir + 'tg_data.csv', delimiter=',')
-
 
 def model_parallel(arg_iter):
 
-    rawdata = pd.read_csv(data_dir + '2019-QSRR_in_IC_Part_IV_data_latest.csv')
     x_data = rawdata.drop(['tR', 'logk'], axis=1)
     y_data = rawdata[['logk']].values.ravel()
     x_train_unscaled, x_test_unscaled, y_train, y_test = train_test_split(x_data, y_data, test_size=0.3, shuffle=True)
