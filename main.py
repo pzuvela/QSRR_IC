@@ -42,6 +42,10 @@ Input arguments:
 3) n_splits     : number of cross-validation splits (for optimization, if opt_prompt is no, then n_splits is [])
 
 """
+
+if not len(argv) > 1:
+    exit('Usage: python main.py max_iter count proc_i method opt_prompt n_splits')
+
 max_iter = int(argv[1])
 count = int(argv[2])
 proc_i = int(argv[3])
@@ -297,11 +301,6 @@ if __name__ == '__main__':
     tg_true = models_final[0][5]
     tg_pred = [models_final[i][6] for i in range(max_iter)]
 
-    # Compute and display run-time
-    run_time = time() - start_time
-    print('Simulation Completed')
-    print('Duration: {}\n'.format(strftime("%H:%M:%S", gmtime(run_time))))
-
     # Save the distribution of isocratic retention time errors
     DataFrame(rmse_iso, columns=['rmsre_train', 'rmsre_test']).to_csv(results_dir + '2019-QSRR_IC_PartIV-{}_{}_errors_'
                                                                                     'iso_{}_iters_run_{}.csv'.
@@ -324,3 +323,9 @@ if __name__ == '__main__':
     tg_pred.to_csv(results_dir + '2019-QSRR_IC_PartIV-{}_{}_tR_grad_{}_iters_run_{}.csv'
                    .format(datetime.now().strftime('%d_%m_%Y-%H_%M'), method,
                            max_iter, count), header=True)
+
+    # Compute and display run-time
+    run_time = time() - start_time
+
+    # Exit flag
+    exit('Simulation completed successfully !\nRun-time: {}\n'.format(strftime("%H:%M:%S", gmtime(run_time))))
