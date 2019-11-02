@@ -39,12 +39,12 @@ Input arguments:
 3) proc_i       : number of processes
 4) method       : regression method (currently implemented: xgb, gbr)
 5) opt_prompt   : prompt for optimization of hyper-parameters (yes, no, default: no)
-3) n_splits     : number of cross-validation splits (for optimization, if opt_prompt is no, then n_splits is [])
+6) n_splits     : number of cross-validation splits (for optimization, if opt_prompt is no, then n_splits is [])
 
 """
 
 if not len(argv) > 1:
-    exit('Usage: python main.py max_iter count proc_i method opt_prompt n_splits')
+    exit('Usage: python main.py max_iter count proc_i method  opt_prompt n_splits')
 
 max_iter = int(argv[1])
 count = int(argv[2])
@@ -90,24 +90,25 @@ x_data = raw_data.drop(['tR', 'logk'], axis=1)
 # Define y_data and ravel it into a column/row vector
 y_data = raw_data[['logk']].values.ravel()
 
-# Randomly split the data into training and testing
-x_train_unscaled, x_test_unscaled, y_train, y_test = train_test_split(x_data, y_data, test_size=0.3,
-                                                                      shuffle=True)
-
-# Define a scaling object
-sc = StandardScaler()
-
-# Scale the training data and save the mean & std into the object "sc"
-x_train = DataFrame(sc.fit_transform(x_train_unscaled), columns=x_train_unscaled.columns).values
-
-# Scale the testing data (using the training mean & std)
-x_test = DataFrame(sc.transform(x_test_unscaled), columns=x_test_unscaled.columns).values
-
-# Scale all of the data (using the training mean & std)
-x_data = DataFrame(sc.transform(x_data), columns=x_data.columns).values
-
 # Hyper-parameter optimization
 if opt_prompt == 'yes':
+
+    # Randomly split the data into training and testing
+    x_train_unscaled_opt, x_test_unscaled_opt, y_train_opt, y_test_opt = train_test_split(x_data, y_data,
+                                                                                          test_size=0.3,
+                                                                                          shuffle=True)
+
+    # Define a scaling object
+    sc_opt = StandardScaler()
+
+    # Scale the training data and save the mean & std into the object "sc"
+    x_train_opt = DataFrame(sc_opt.fit_transform(x_train_unscaled_opt), columns=x_test_unscaled_opt.columns).values
+
+    # Scale the testing data (using the training mean & std)
+    x_test_opt = DataFrame(sc_opt.transform(x_test_unscaled_opt), columns=x_test_unscaled_opt.columns).values
+
+    # Scale all of the data (using the training mean & std)
+    x_data_opt = DataFrame(sc_opt.transform(x_data), columns=x_data.columns).values
 
     # Import scipy optimize
     from scipy import optimize
@@ -117,7 +118,7 @@ if opt_prompt == 'yes':
 
         from xgboost import XGBRegressor
 
-        reg_opt = XGBRegressor(objective="reg:squarederror").fit(x_train, y_train)
+        reg_opt = XGBRegressor(objective="reg:squarederror").fit(x_train_opt, y_train_opt)
 
     # sklearn gradient boosting
     elif method == 'gbr':
@@ -125,23 +126,23 @@ if opt_prompt == 'yes':
         from sklearn.ensemble import GradientBoostingRegressor
 
         reg_opt = GradientBoostingRegressor()
-        reg_opt.fit(x_train, y_train)
+        reg_opt.fit(x_train_opt, y_train_opt)
 
     # Default
     else:
         from xgboost import XGBRegressor
 
-        reg_opt = XGBRegressor(objective="reg:squarederror").fit(x_train, y_train)
+        reg_opt = XGBRegressor(objective="reg:squarederror").fit(x_train_opt, y_train_opt)
 
     # QSRR Optimisation
     print('    ----------------- QSRR Optimisation ---------------')
 
     # Initial Params
     initial = reg_opt.get_params()
-    y_hat = reg_opt.predict(x_train)
-    initial_rmse_train = get_rmse(y_train, y_hat)
-    y_hat = reg_opt.predict(x_test)
-    initial_rmse_test = get_rmse(y_test, y_hat)
+    y_hat_opt = reg_opt.predict(x_train_opt)
+    initial_rmse_train = get_rmse(y_train_opt, y_hat_opt)
+    y_hat_opt = reg_opt.predict(x_test_opt)
+    initial_rmse_test = get_rmse(y_test_opt, y_hat_opt)
     regopt_start = time()
 
     toprint = '    ---------------- Initial Parameters ---------------\n' \
@@ -178,7 +179,7 @@ if opt_prompt == 'yes':
 
         # CV score
         scorer = make_scorer(get_rmse)
-        score = cross_val_score(opt_model, x_train, y_train, cv=KFold(n_splits=n_splits), scoring=scorer)
+        score = cross_val_score(opt_model, x_train_opt, y_train_opt, cv=KFold(n_splits=n_splits), scoring=scorer)
 
         return mean(score)
 
@@ -188,13 +189,13 @@ if opt_prompt == 'yes':
     reg_params = {'n_estimators': int(round(final_values.x[0], decimals=0)),
                   'learning_rate': final_values.x[1],
                   'max_depth': int(round(final_values.x[2], decimals=0))}
-    reg_opt.set_params(**reg_params).fit(x_train, y_train)
+    reg_opt.set_params(**reg_params).fit(x_train_opt, y_train_opt)
 
     # Final Params
-    y_hat = reg_opt.predict(x_train)
-    final_rmse_train = get_rmse(y_train, y_hat)
-    y_hat = reg_opt.predict(x_test)
-    final_rmse_test = get_rmse(y_test, y_hat)
+    y_hat = reg_opt.predict(x_train_opt)
+    final_rmse_train = get_rmse(y_train_opt, y_hat)
+    y_hat = reg_opt.predict(x_test_opt)
+    final_rmse_test = get_rmse(y_test_opt, y_hat)
     regopt_time = time() - regopt_start
 
     toprint = '    ----------------- Final Parameters ----------------\n' \
@@ -246,36 +247,53 @@ else:
 
 # Defining a function to feed to multiprocessing
 def model_parallel(arg_iter):
-    trset = [x_train, x_test, y_train, y_test]
+
+    # Randomly split the data into training and testing
+    x_train_unscaled_par, x_test_unscaled_par, y_train_par, y_test_par = train_test_split(x_data, y_data, test_size=0.3,
+                                                                                          shuffle=True)
+
+    # Define a scaling object
+    sc_par = StandardScaler()
+
+    # Scale the training data and save the mean & std into the object "sc"
+    x_train_par = DataFrame(sc_par.fit_transform(x_train_unscaled_par), columns=x_train_unscaled_par.columns).values
+
+    # Scale the testing data (using the training mean & std)
+    x_test_par = DataFrame(sc_par.transform(x_test_unscaled_par), columns=x_test_unscaled_par.columns).values
+
+    # Scale all of the data (using the training mean & std)
+    x_data_par = DataFrame(sc_par.transform(x_data), columns=x_data.columns).values
+
+    trset = [x_train_par, x_test_par, y_train_par, y_test_par]
 
     # XGB
     if method == 'xgb':
         from regr import regress_xgbr
-        reg, reg_traindata, reg_testdata = regress_xgbr(trset, reg_params=reg_params)
+        reg, _, _ = regress_xgbr(trset, reg_params=reg_params)
 
     # GBR
     elif method == 'gbr':
         from regr import regress_gbr
-        reg, reg_traindata, reg_testdata = regress_gbr(trset, reg_params=None)
+        reg, _, _ = regress_gbr(trset, reg_params=reg_params)
 
     # Default
     else:
         from regr import regress_xgbr
-        reg, reg_traindata, reg_testdata = regress_xgbr(trset, reg_params=reg_params)
+        reg, _, _ = regress_xgbr(trset, reg_params=reg_params)
 
-    y_hat_train = reg.predict(x_train)
-    rmsre_train = get_rmse(y_train, y_hat_train)
-    y_hat_test = reg.predict(x_test)
-    rmsre_test = get_rmse(y_test, y_hat_test)
-    y_data_hat = reg.predict(x_data)
+    y_hat_train_par = reg.predict(x_train_par)
+    rmsre_train_par = get_rmse(y_train_par, y_hat_train_par)
+    y_hat_test_par = reg.predict(x_test_par)
+    rmsre_test_par = get_rmse(y_test_par, y_hat_test_par)
+    y_data_hat_par = reg.predict(x_data_par)
 
     # Predicted retention times
-    tg_total = model(reg, iso_data, t_void, grad_data, sc).flatten(order='F')
+    tg_total = model(reg, iso_data, t_void, grad_data, sc_par).flatten(order='F')
 
-    rmsre_grad = get_rmse(tg_exp, tg_total)
+    rmsre_grad_par = get_rmse(tg_exp, tg_total)
 
     print('Iteration #{}/{} completed'.format(arg_iter[0] + 1, max_iter))
-    return rmsre_train, rmsre_test, y_data, y_data_hat, rmsre_grad, tg_exp, tg_total
+    return rmsre_train_par, rmsre_test_par, y_data, y_data_hat_par, rmsre_grad_par, tg_exp, tg_total
 
 
 if __name__ == '__main__':
