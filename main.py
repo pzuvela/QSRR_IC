@@ -41,12 +41,11 @@ Input arguments:
 
 """
 
-# Show usage if no arguments are passed to the file
-if not len(argv) > 1:
-    exit('Usage: python main.py max_iter count proc_i method opt_prompt n_splits')
-
-# Define variables from the input arguments
-max_iter, count, proc_i, method, opt_prompt = int(argv[1]), int(argv[2]), int(argv[3]), str(argv[4]), str(argv[5])
+# Show usage if no arguments are passed to the file and define variables from the input arguments
+max_iter, count, proc_i, method, opt_prompt = int(argv[1]), int(argv[2]), int(argv[3]), str(argv[4]), \
+                                              str(argv[5]) if len(argv) > 1 else exit('Usage: python main.py max_iter '
+                                                                                      'count proc_i method opt_prompt '
+                                                                                      'n_splits')
 n_splits = int(argv[6]) if opt_prompt == "yes" else []
 
 
@@ -121,7 +120,9 @@ else:
         reg_params_list[2] if method == 'pls' else reg_params_list[0]
 
 
-""" Resampling with replacement  """
+""" 
+Resampling with replacement  
+"""
 
 
 # Defining a function to feed to multiprocessing

@@ -3,7 +3,7 @@
 Processing results of parallel runs of main.py
 
 Input arguments:
-1) method   : xgb, gbr
+1) method   : xgb, gbr, pls
 2) max_iter : number of iterations
 
 Usage:
@@ -20,9 +20,9 @@ from src.modules.func import merge_files
 from datetime import datetime
 from glob import glob
 
-# Arguments
-method = str(argv[1])
-max_iter = int(argv[2])
+# Input arguments
+method, max_iter = exit('Usage: python proc_results.py method max_iter') if not len(argv) > 1 else \
+                       str(argv[1]), int(argv[2])
 
 # Directories
 curr_dir = getcwd()
