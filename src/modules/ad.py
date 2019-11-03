@@ -26,7 +26,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 
-def ad(y1, y1_hat, y2, y2_hat, x1, x2, graph):
+def williams(y1, y1_hat, y2, y2_hat, x1, x2, graph):
 
     # Mean centering the X-matrices
     # x1 = x1 - np.mean(x1, axis=0)
@@ -53,7 +53,7 @@ def ad(y1, y1_hat, y2, y2_hat, x1, x2, graph):
 
     # Plotting Williams plot
     if graph == 'yes':
-        # print('## Constructing Williams plot...')
+        print('## Constructing Williams plot...')
         # Warning limit for std residuals
         sigma = 3
         fig, ad_plot = plt.subplots()
@@ -68,9 +68,9 @@ def ad(y1, y1_hat, y2, y2_hat, x1, x2, graph):
         ad_plot.legend()
 
     elif graph == 'no':
+        print('\n')
+        print('## Not constructing Williams plot...')
         pass
-        # print('\n')
-        # print('## Not constructing Williams plot...')
     return hat, res_scaled, hat_star
 
 
