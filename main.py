@@ -35,7 +35,7 @@ Input arguments:
 1) max_iter     : number of iterations
 2) count        : run count (necessary if some parallel runs finish at the same time)
 3) proc_i       : number of processes
-4) method       : regression method (currently implemented: xgb, gbr)
+4) method       : regression method (currently implemented: xgb, gbr, pls)
 5) opt_prompt   : prompt for optimization of hyper-parameters (yes, no, default: no)
 6) n_splits     : number of cross-validation splits (for optimization, if opt_prompt is no, then n_splits is [])
 
