@@ -16,7 +16,7 @@ from sys import argv
 from os import getcwd
 from numpy import genfromtxt
 from pandas import read_csv
-from func import merge_files
+from src.modules.func import merge_files
 from datetime import datetime
 from glob import glob
 
@@ -28,6 +28,7 @@ max_iter = int(argv[2])
 curr_dir = getcwd()
 data_dir = curr_dir + '/data/'
 results_dir = curr_dir + '/results/'
+merged_results_dir = curr_dir + '/results_merged/'
 
 # IC data for QSRR
 raw_data = read_csv(data_dir + '2019-QSRR_in_IC_Part_IV_data_latest.csv')
@@ -49,20 +50,20 @@ grad_tR_len = len(glob(results_dir+'*{}_tR_grad*{}_iters_run*'.format(method, ma
 
 # Merge isocratic QSRR model errors and add C.I.
 merge_files(results_dir+'*{}_errors_iso*{}_iters_run*'.format(method, max_iter), tr_exp=None).to_csv(
-    results_dir + '2019-QSRR_IC_PartIV-{}_{}_errors_iso_{}_iters_merged.csv'
+    merged_results_dir + '2019-QSRR_IC_PartIV-{}_{}_errors_iso_{}_iters_merged.csv'
     .format(datetime.now().strftime('%d_%m_%Y-%H_%M'), method, max_iter * iso_err_len), header=True)
 
 # Merge experimental isocratic logk values with predicted ones and add C.I.
 merge_files(results_dir+'*{}_logk_iso*{}_iters_run*'.format(method, max_iter), tr_exp=logk_iso_exp).to_csv(
-    results_dir + '2019-QSRR_IC_PartIV-{}_{}_logk_iso_{}_iters_merged.csv'
+    merged_results_dir + '2019-QSRR_IC_PartIV-{}_{}_logk_iso_{}_iters_merged.csv'
     .format(datetime.now().strftime('%d_%m_%Y-%H_%M'), method, max_iter * iso_logk_len), header=True)
 
 # Merge gradient QSRR model errors and add C.I.
 merge_files(results_dir+'*{}_errors_grad_{}_iters_run*'.format(method, max_iter)).to_csv(
-    results_dir + '2019-QSRR_IC_PartIV-{}_{}_errors_grad_{}_iters_merged.csv'
+    merged_results_dir + '2019-QSRR_IC_PartIV-{}_{}_errors_grad_{}_iters_merged.csv'
     .format(datetime.now().strftime('%d_%m_%Y-%H_%M'), method, max_iter * grad_err_len), header=True)
 
 # Merge experimental gradient tR values with predicted ones and add C.I.
 merge_files(results_dir+'*{}_tR_grad*{}_iters_run*'.format(method, max_iter), tr_exp=tg_exp).to_csv(
-    results_dir + '2019-QSRR_IC_PartIV-{}_{}_tR_grad_{}_iters_merged.csv'
+    merged_results_dir + '2019-QSRR_IC_PartIV-{}_{}_tR_grad_{}_iters_merged.csv'
     .format(datetime.now().strftime('%d_%m_%Y-%H_%M'), method, max_iter * grad_tR_len), header=True)
