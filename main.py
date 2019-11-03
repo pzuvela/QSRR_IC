@@ -14,7 +14,7 @@ main.py max_iter count proc_i method opt_prompt n_splits (optional)
 
 """
 from os import getcwd, makedirs
-from os.path import exists, isfile
+from os.path import exists
 from sys import argv
 from time import time, strftime, gmtime
 from datetime import datetime
