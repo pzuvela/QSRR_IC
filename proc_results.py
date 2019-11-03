@@ -13,7 +13,8 @@ python proc_results.py method max_iter
 
 # Importing packages
 from sys import argv
-from os import getcwd
+from os import getcwd, makedirs
+from os.path import exists
 from numpy import genfromtxt
 from pandas import read_csv
 from src.modules.func import merge_files
@@ -29,6 +30,9 @@ curr_dir = getcwd()
 data_dir = curr_dir + '/data/'
 results_dir = curr_dir + '/results/'
 merged_results_dir = curr_dir + '/results_merged/'
+
+# Create the results directory if it does not exist
+makedirs(merged_results_dir) if not exists(merged_results_dir) else []
 
 # IC data for QSRR
 raw_data = read_csv(data_dir + '2019-QSRR_in_IC_Part_IV_data_latest.csv')

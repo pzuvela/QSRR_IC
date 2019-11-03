@@ -13,7 +13,8 @@ Usage:
 main.py max_iter count proc_i method opt_prompt n_splits (optional)
 
 """
-from os import getcwd
+from os import getcwd, makedirs
+from os.path import exists, isfile
 from sys import argv
 from time import time, strftime, gmtime
 from datetime import datetime
@@ -28,6 +29,9 @@ from src.modules.iso2grad import model
 # Directories
 curr_dir = getcwd()
 data_dir, results_dir = curr_dir + '/data/', curr_dir + '/results/'
+
+# Create the results directory if it does not exist
+makedirs(results_dir) if not exists(results_dir) else []
 
 """ Fixed variables 
 
@@ -124,7 +128,7 @@ else:
 
 
 """ 
-Resampling with replacement  
+----------------- Resampling with replacement -----------------
 """
 
 
