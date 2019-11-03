@@ -48,9 +48,12 @@ max_iter, count, proc_i, method, opt_prompt = int(argv[1]), int(argv[2]), int(ar
                                                                                       'n_splits')
 n_splits = int(argv[6]) if opt_prompt == "yes" else []
 
+# Make sure that method is 'xbr', 'gbr', or 'pls'
+assert method in ['xbr', 'gbr', 'pls'], 'Please enter either ''pls'', ''xgb'', or ''gbr'' !'
+
 
 """ 
-Loading data into Numpy arrays:
+Loading data into Pandas DataFrames & Numpy arrays:
 1) IC data for QSRR model building (at all experimental isocratic concentrations) 
 2) Gradient profiles
 3) Void times
@@ -117,7 +120,7 @@ else:
 
     # Default parameter conditionals
     reg_params = reg_params_list[0] if method == 'xgb' else reg_params_list[1] if method == 'gbr' else \
-        reg_params_list[2] if method == 'pls' else reg_params_list[0]
+        reg_params_list[2] if method == 'pls' else []
 
 
 """ 

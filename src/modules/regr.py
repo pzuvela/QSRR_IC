@@ -90,7 +90,7 @@ def optimization(method, x_train_opt, y_train_opt, x_test_opt, y_test_opt, n_spl
     from sklearn.metrics import make_scorer
 
     # Main conditionals
-    if method == ('xgb' or 'gbr'):
+    if method in ['xbr', 'gbr']:
 
         # xgBoost
         if method == 'xgb':
