@@ -1,19 +1,19 @@
-import numpy as np
-import pandas as pd
+from numpy import abs, sqrt, square, argmax, sort, vstack, transpose
+from pandas import DataFrame, concat, read_csv
 from sklearn.metrics import confusion_matrix
 from glob import glob
 
 
 def get_mre(y_data, y_hat):
-    return 100 * np.abs((y_hat.ravel() - y_data) / y_data).mean()
+    return 100 * abs((y_hat.ravel() - y_data) / y_data).mean()
 
 
 def get_rmsre(y_data, y_hat):
-    return np.sqrt(np.square(100 * (y_hat - y_data) / y_data).mean())
+    return sqrt(square(100 * (y_hat - y_data) / y_data).mean())
 
 
 def get_rmse(y_data, y_hat):
-    return np.sqrt(np.square(y_hat - y_data).mean())
+    return sqrt(square(y_hat - y_data).mean())
 
 
 def get_mcc(y_data, y_hat):
@@ -26,19 +26,6 @@ def fileprint(string, directory):
         print(string, file=f)
 
 
-def add_error(reg, rawdata, scaleddata):
-    # scaled data required as reg model worked with scaled data
-    x_data = scaleddata[0][['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I',
-                            'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V']]
-    y_data = scaleddata[1]['tR / min'].values
-
-    y_hat = reg.predict(x_data).ravel()
-    re = 100 * np.abs((y_hat - y_data) / y_data)
-    rawdata.loc[:, 'error'] = re.ravel()
-
-    return rawdata
-
-
 def knee(x, y):
     del1, del2 = [], []
     for i in range(0, len(x) - 1):
@@ -47,7 +34,7 @@ def knee(x, y):
     for j in range(0, len(del1) - 1):
         del2.append(del1[j + 1] - del1[j])
 
-    max_del2 = np.argmax(del2)
+    max_del2 = argmax(del2)
     kneept = x[max_del2 + 2]
     return int(kneept)
 
@@ -56,7 +43,7 @@ def add_true_mean_std(y_true, df):
     stats = []
     for i in range(len(df.columns)):
         label = df.columns[i]
-        col_values = np.sort(df[label].values)
+        col_values = sort(df[label].values)
         mean = col_values.mean()
         j = int(len(col_values) * 2.5 / 100)
         lower_value = col_values[j]
@@ -71,13 +58,16 @@ def add_true_mean_std(y_true, df):
         lower_limit = mean - lower_value
         upper_limit = upper_value - mean
         stats.append([mean, lower_limit, upper_limit, lower_value, upper_value])
-    stats = np.transpose(stats)
-    indices = ['mean', 'lower_limit', 'upper_limit', 'lower_value', 'upper_value']
+    
     if y_true is not None:
-        stats = np.vstack((y_true, stats))
+        stats = vstack((y_true, transpose(stats)))
         indices = ['actual', 'mean', 'lower_limit', 'upper_limit', 'lower_value', 'upper_value']
-    df_stats = pd.DataFrame(stats, index=indices, columns=df.columns)
-    df = pd.concat([df_stats, df])
+    else:
+        stats = transpose(stats)
+        indices = ['mean', 'lower_limit', 'upper_limit', 'lower_value', 'upper_value']
+        
+    df_stats = DataFrame(stats, index=indices, columns=df.columns)
+    df = concat([df_stats, df])
     return df
 
 
@@ -85,18 +75,18 @@ def add_mean_std(df):
     mean = df.mean(axis=0).ravel()
     std = df.std(axis=0).ravel()
     stats = [mean, std]
-    df_stats = pd.DataFrame(stats, index=['mean', 'std'], columns=df.columns)
-    df = pd.concat([df_stats, df])
+    df_stats = DataFrame(stats, index=['mean', 'std'], columns=df.columns)
+    df = concat([df_stats, df])
     return df
 
 
 def get_limits(file):
-    df = pd.read_csv(file)
+    df = read_csv(file)
     stats_list = []
 
     for i in range(1, len(df.columns)):
         label = df.columns[i]
-        col_values = np.sort(df[label].values)
+        col_values = sort(df[label].values)
         j = int(len(col_values) * 2.5 / 100)
         k = int(len(col_values) - j)
         mean = col_values.mean()
@@ -107,23 +97,20 @@ def get_limits(file):
         stats_list.append([label, mean, lower_limit, upper_limit, lower_value, upper_value])
         towrite = '{} limits are {:.2f}(+{:.2f};-{:.2f})'.format(label, mean, upper_limit, lower_limit)
         print(towrite)
-    pd.DataFrame(stats_list, columns=['label', 'mean', 'lower_limit', 'upper_limit', 'lower_value', 'upper_value'])\
+    DataFrame(stats_list, columns=['label', 'mean', 'lower_limit', 'upper_limit', 'lower_value', 'upper_value'])\
         .to_csv('{}_stats.csv'.format(file[:-4]), index=False)
 
 
 # Function to merge files from parallel runs
 def merge_files(file_str, tr_exp=None):
 
-    file_df = pd.DataFrame()
+    file_df = DataFrame()
 
     for file in glob(file_str):
         print('Processing', file, '...')
-        file_df = file_df.append(pd.read_csv(file, index_col=0), sort=False)
+        file_df = file_df.append(read_csv(file, index_col=0), sort=False, ignore_index=True)
 
-    if tr_exp is not None:
-        df_merged = add_true_mean_std(tr_exp, file_df)
-    else:
-        df_merged = add_true_mean_std(None, file_df)
+    df_merged = add_true_mean_std(tr_exp, file_df) if tr_exp is not None else add_true_mean_std(None, file_df)
 
     return df_merged
 
@@ -136,8 +123,8 @@ def histplot(y_data, title, x_axis):
     ax.hist(y_data, bins=20, density=True)
     x_min, x_max = ax.get_xlim()
     y_mean, y_std = norm.fit(y_data)
-    p = norm.pdf(np.linspace(x_min, x_max, 100), y_mean, y_std)
-    ax.plot(np.linspace(x_min, x_max, 100), p)
+    p = norm.pdf(linspace(x_min, x_max, 100), y_mean, y_std)
+    ax.plot(linspace(x_min, x_max, 100), p)
     ax.set_title(title)
     ax.set_ylabel('Probability Density')
     ax.set_xlabel(x_axis)

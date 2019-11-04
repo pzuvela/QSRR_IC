@@ -134,9 +134,14 @@ else:
 
 # Defining a function to feed to multiprocessing
 def model_parallel(arg_iter):
+
+    # Random seed
+    rnd_state = (count * max_iter) + (arg_iter[0] + 1)
+
     # Randomly split the data into training and testing
     x_train_unscaled_par, x_test_unscaled_par, y_train_par, y_test_par = train_test_split(x_data, y_data, test_size=0.3,
-                                                                                          shuffle=True)
+                                                                                          shuffle=True,
+                                                                                          random_state=rnd_state)
 
     # Define a scaling object
     sc_par = StandardScaler()
