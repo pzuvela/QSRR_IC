@@ -4,6 +4,8 @@ Functions related to regression models
     1) regress_pls  : PLS modelling, training & prediction
     2) regress_gbr  : GBR modelling, training & prediction
     3) regress_xgbr : XGB modelling, training & prediction
+    4) regress_rfr  : RFR modelling, training & prediction
+    5) regress_ada  : ADB modelling, training & prediction
     4) optimization : Optimization of hyper-parameters for PLS, GBR and XGB
 
 Notes:
@@ -67,6 +69,42 @@ def regress_xgbr(trset, reg_params=None):
     return model, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test]
 
 
+def regress_rfr(trset, reg_params=None):
+
+    from sklearn.ensemble import RandomForestRegressor
+
+    x_train, x_test, y_train, y_test = trset
+
+    # Random Forest Regressor
+    model = RandomForestRegressor()
+    if reg_params is not None:
+        model.set_params(**reg_params)
+    model.fit(x_train, y_train)
+
+    y_hat_train = model.predict(x_train).ravel()
+    y_hat_test = model.predict(x_test).ravel()
+
+    return model, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test]
+
+
+def regress_ada(trset, reg_params=None):
+
+    from sklearn.ensemble import AdaBoostRegressor
+
+    x_train, x_test, y_train, y_test = trset
+
+    # Adaptive Boosting Regressor
+    model = AdaBoostRegressor()
+    if reg_params is not None:
+        model.set_params(**reg_params)
+    model.fit(x_train, y_train)
+
+    y_hat_train = model.predict(x_train).ravel()
+    y_hat_test = model.predict(x_test).ravel()
+
+    return model, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test]
+
+
 def optimization(method, x_train_opt, y_train_opt, x_test_opt, y_test_opt, n_splits, proc_i, results_dir, count):
 
     """
@@ -77,6 +115,8 @@ def optimization(method, x_train_opt, y_train_opt, x_test_opt, y_test_opt, n_spl
     1) PLS (CV)
     2) Gradient Boosting (sklearn) (DE)
     3) Extreme Boosting (xgBoost) (DE)
+    4) RFR (DE)
+    5) AdaBoost (DE)
 
     """
 
@@ -90,7 +130,7 @@ def optimization(method, x_train_opt, y_train_opt, x_test_opt, y_test_opt, n_spl
     from sklearn.metrics import make_scorer
 
     # Main conditionals
-    if method in ['xbr', 'gbr']:
+    if method in ['xbr', 'gbr', 'rfr', 'ada']:
 
         # xgBoost
         if method == 'xgb':
@@ -107,9 +147,25 @@ def optimization(method, x_train_opt, y_train_opt, x_test_opt, y_test_opt, n_spl
             reg_opt = GradientBoostingRegressor()
             reg_opt.fit(x_train_opt, y_train_opt)
 
+        # sklearn rfr
+        elif method == 'rfr':
+
+            from sklearn.ensemble import RandomForestRegressor
+
+            reg_opt = RandomForestRegressor()
+            reg_opt.fit(x_train_opt, y_train_opt)
+
+        # sklearn ada
+        elif method == 'ada':
+
+            from sklearn.ensemble import AdaBoostRegressor
+
+            reg_opt = AdaBoostRegressor()
+            reg_opt.fit(x_train_opt, y_train_opt)
+
         else:
 
-            raise ValueError('# Please enter either ''pls'', ''xgb'', or ''gbr''')
+            raise ValueError('# Please enter either ''pls'',''ada'',''rfr'', ''xgb'', or ''gbr''')
 
         # QSRR Optimisation
         print('    ----------------- QSRR Optimisation ---------------')
@@ -260,6 +316,6 @@ def optimization(method, x_train_opt, y_train_opt, x_test_opt, y_test_opt, n_spl
 
     else:
 
-        raise ValueError('# Please enter either ''pls'', ''xgb'', or ''gbr''')
+        raise ValueError('# Please enter either ''pls'',''ada'',''rfr'', ''xgb'', or ''gbr''')
 
     return reg_params

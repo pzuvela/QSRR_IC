@@ -51,9 +51,9 @@ max_iter, count, proc_i, method, opt_prompt = (int(argv[1]), int(argv[2]), int(a
 
 n_splits = int(argv[6]) if opt_prompt == "yes" else []
 
-# Make sure that method is 'xgb', 'gbr', or 'pls'
-assert method in ['xgb', 'gbr', 'pls'], 'Please enter either ''pls'', ''xgb'', or ''gbr'' !'
-
+# Make sure that method is 'xgb', 'gbr', 'pls', 'rfr', or 'ada'
+assert method in ['xbr', 'gbr', 'pls', 'rfr', 'ada'], \
+    'Please enter either ''pls'', ''xgb'',''rfr'',''ada'', or ''gbr'' !'
 
 """ 
 Loading data into Pandas DataFrames & Numpy arrays:
@@ -119,11 +119,13 @@ else:
 
     # List of default parameters
     reg_params_list = [{'n_estimators': 497, 'learning_rate': 0.23, 'max_depth': 2},
-                       {'n_estimators': 485, 'learning_rate': 0.23, 'max_depth': 2}, {'latent_variables': 4}]
+                       {'n_estimators': 485, 'learning_rate': 0.23, 'max_depth': 2}, {'latent_variables': 4},
+                       {'n_estimators': 497, 'max_depth': 2}, {'n_estimators': 497, 'learning_rate': 0.23}]
 
     # Default parameter conditionals
-    reg_params = reg_params_list[0] if method == 'xgb' else reg_params_list[1] if method == 'gbr' else \
-        reg_params_list[2] if method == 'pls' else []
+    reg_params = reg_params_list[0] if method == 'xgb' else reg_params_list[1] if method == 'gbr' \
+        else reg_params_list[3] if method == 'rfr' else reg_params_list[4] if method == 'ada' \
+        else reg_params_list[2] if method == 'pls' else []
 
 
 """ 
@@ -156,6 +158,12 @@ def model_parallel(arg_iter):
 
     trset = [x_train_par, x_test_par, y_train_par, y_test_par]
 
+    """ 
+    TODO:
+    1) Reduce to a few lines by dynamically importing the functions from a list
+    2) Convert to a class
+    """
+
     # XGB
     if method == 'xgb':
         from src.modules.regr import regress_xgbr
@@ -165,6 +173,18 @@ def model_parallel(arg_iter):
     elif method == 'gbr':
         from src.modules.regr import regress_gbr
         reg, _, _ = regress_gbr(trset, reg_params=reg_params)
+
+    # RFR
+    elif method == 'rfr':
+
+        from src.modules.regr import regress_rfr
+        reg, _, _ = regress_rfr(trset, reg_params=reg_params)
+
+    # ADA
+    elif method == 'ada':
+
+        from src.modules.regr import regress_ada
+        reg, _, _ = regress_ada(trset, reg_params=reg_params)
 
     # Default (XGB)
     else:
