@@ -52,8 +52,8 @@ max_iter, count, proc_i, method, opt_prompt = int(argv[1]), int(argv[2]), int(ar
                                                                                       'n_splits')
 n_splits = int(argv[6]) if opt_prompt == "yes" else []
 
-# Make sure that method is 'xbr', 'gbr', or 'pls'
-assert method in ['xbr', 'gbr', 'pls'], 'Please enter either ''pls'', ''xgb'', or ''gbr'' !'
+# Make sure that method is 'xgb', 'gbr', or 'pls'
+assert method in ['xgb', 'gbr', 'pls'], 'Please enter either ''pls'', ''xgb'', or ''gbr'' !'
 
 
 """ 
