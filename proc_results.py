@@ -23,7 +23,7 @@ from glob import glob
 
 # Input arguments
 method, max_iter = exit('Usage: python proc_results.py method max_iter') if not len(argv) > 1 else \
-                       str(argv[1]), int(argv[2])
+    (str(argv[1]), int(argv[2]))
 
 # Directories
 curr_dir = getcwd()
