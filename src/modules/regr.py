@@ -130,7 +130,7 @@ def optimization(method, x_train_opt, y_train_opt, x_test_opt, y_test_opt, n_spl
     from sklearn.metrics import make_scorer
 
     # Main conditionals
-    if method in ['xbr', 'gbr', 'rfr', 'ada']:
+    if method in ['xgb', 'gbr', 'rfr', 'ada']:
 
         # xgBoost
 
@@ -169,7 +169,7 @@ def optimization(method, x_train_opt, y_train_opt, x_test_opt, y_test_opt, n_spl
             raise ValueError('# Please enter either ''pls'',''ada'',''rfr'', ''xgb'', or ''gbr''')
 
         # Objective functions
-        if method in ['xbr', 'gbr']:
+        if method in ['xgb', 'gbr']:
 
             def reg_objective(x):
                 # Descaling Parameters
@@ -207,10 +207,10 @@ def optimization(method, x_train_opt, y_train_opt, x_test_opt, y_test_opt, n_spl
             def reg_objective(x):
                 # Descaling Parameters
                 n_est = int(round(x[0], decimals=0))
-                lr = x[1]
+                max_depth = int(round(x[1], decimals=0))
                 min_samp_leaf = int(round(x[2], decimals=0))
 
-                opt_model = reg_opt.set_params(n_estimators=n_est, learning_rate=lr, min_samples_leaf=min_samp_leaf)
+                opt_model = reg_opt.set_params(n_estimators=n_est, max_depth=max_depth, min_samples_leaf=min_samp_leaf)
 
                 # CV score
                 scorer_ens_opt = make_scorer(get_rmse)
@@ -235,7 +235,7 @@ def optimization(method, x_train_opt, y_train_opt, x_test_opt, y_test_opt, n_spl
         regopt_start = time()
 
         # Objective functions
-        if method in ['xbr', 'gbr']:
+        if method in ['xgb', 'gbr']:
 
             toprint = '    ---------------- Initial Parameters ---------------\n' \
                       '    n_estimators: {:.0f}\n' \
@@ -298,31 +298,30 @@ def optimization(method, x_train_opt, y_train_opt, x_test_opt, y_test_opt, n_spl
 
             toprint = '    ---------------- Initial Parameters ---------------\n' \
                       '    n_estimators: {:.0f}\n' \
-                      '    learning_rate: {:.0f}\n' \
+                      '    max_depth: {} \n' \
                       '    min_samples_leaf: {:.0f}\n' \
                       '    Initial RMSEE: {:.2f}' \
                       '    Initial RMSEP: {:.2f}\n' \
                       '    ---------------------------------------------------' \
                 .format(initial['n_estimators'],
-                        initial['learning_rate'],
+                        initial['max_depth'],
                         initial['min_samples_leaf'],
                         initial_rmse_train,
-                        initial_rmse_test
-                        )
+                        initial_rmse_test)
 
             print(toprint)
 
             # Creating bounds
             n_est_min, n_est_max = 10, 500
-            lr_min, lr_max = 0.01, 0.9
+            max_depth_min, max_depth_max = 1, 5
             min_samp_leaf_min, min_samp_leaf_max = 2, 5
-            bounds = optimize.Bounds([n_est_min, lr_min, min_samp_leaf_min],
-                                     [n_est_max, lr_max, min_samp_leaf_max])
+            bounds = optimize.Bounds([n_est_min, max_depth_min, min_samp_leaf_min],
+                                     [n_est_max, max_depth_max, min_samp_leaf_max])
 
             final_values = optimize.differential_evolution(reg_objective, bounds, workers=proc_i, updating='deferred',
                                                            mutation=(1.5, 1.9), popsize=20)
             reg_params = {'n_estimators': int(round(final_values.x[0], decimals=0)),
-                          'learning_rate': final_values.x[1],
+                          'max_depth': final_values.x[1],
                           'min_samples_leaf': int(round(final_values.x[2], decimals=0))}
 
             reg_opt.set_params(**reg_params).fit(x_train_opt, y_train_opt)
@@ -337,7 +336,7 @@ def optimization(method, x_train_opt, y_train_opt, x_test_opt, y_test_opt, n_spl
             toprint = '    ----------------- Final Parameters ----------------\n' \
                       '    n_estimators: {:.0f}\n' \
                       '    learning_rate: {:.2f} \n' \
-                      '    min_samples_leaf: {:.0f}\n' \
+                      '    max_depth: {:.0f}\n' \
                       '    Final RMSECV: {:.3f}\n' \
                       '    Final RMSEE: {:.2f}' \
                       '    Final RMSEP: {:.2f}\n' \

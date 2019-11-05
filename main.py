@@ -45,7 +45,7 @@ max_iter, count, proc_i, method, opt_prompt = (int(argv[1]), int(argv[2]), int(a
 n_splits = int(argv[6]) if opt_prompt == "yes" else []
 
 # Make sure that method is 'xgb', 'gbr', 'pls', 'rfr', or 'ada'
-assert method in ['xbr', 'gbr', 'pls', 'rfr', 'ada'], \
+assert method in ['xgb', 'gbr', 'pls', 'rfr', 'ada'], \
     'Please enter either ''pls'', ''xgb'',''rfr'',''ada'', or ''gbr'' !'
 
 # Directories
