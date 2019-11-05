@@ -133,6 +133,7 @@ def optimization(method, x_train_opt, y_train_opt, x_test_opt, y_test_opt, n_spl
     if method in ['xbr', 'gbr', 'rfr', 'ada']:
 
         # xgBoost
+
         if method == 'xgb':
 
             from xgboost import XGBRegressor
@@ -167,6 +168,61 @@ def optimization(method, x_train_opt, y_train_opt, x_test_opt, y_test_opt, n_spl
 
             raise ValueError('# Please enter either ''pls'',''ada'',''rfr'', ''xgb'', or ''gbr''')
 
+        # Objective functions
+        if method in ['xbr', 'gbr']:
+
+            def reg_objective(x):
+                # Descaling Parameters
+                n_est = int(round(x[0], decimals=0))
+                lr = x[1]
+                max_depth = int(round(x[2], decimals=0))
+
+                opt_model = reg_opt.set_params(n_estimators=n_est, learning_rate=lr, max_depth=max_depth)
+
+                # CV score
+                scorer_ens_opt = make_scorer(get_rmse)
+                score = cross_val_score(opt_model, x_train_opt, y_train_opt, cv=KFold(n_splits=n_splits),
+                                        scoring=scorer_ens_opt)
+
+                return mean(score)
+
+        elif method == 'ada':
+
+            def reg_objective(x):
+                # Descaling Parameters
+                n_est = int(round(x[0], decimals=0))
+                lr = x[1]
+
+                opt_model = reg_opt.set_params(n_estimators=n_est, learning_rate=lr)
+
+                # CV score
+                scorer_ens_opt = make_scorer(get_rmse)
+                score = cross_val_score(opt_model, x_train_opt, y_train_opt, cv=KFold(n_splits=n_splits),
+                                        scoring=scorer_ens_opt)
+
+                return mean(score)
+
+        elif method == 'rfr':
+
+            def reg_objective(x):
+                # Descaling Parameters
+                n_est = int(round(x[0], decimals=0))
+                lr = x[1]
+                min_samp_leaf = int(round(x[2], decimals=0))
+
+                opt_model = reg_opt.set_params(n_estimators=n_est, learning_rate=lr, min_samples_leaf=min_samp_leaf)
+
+                # CV score
+                scorer_ens_opt = make_scorer(get_rmse)
+                score = cross_val_score(opt_model, x_train_opt, y_train_opt, cv=KFold(n_splits=n_splits),
+                                        scoring=scorer_ens_opt)
+
+                return mean(score)
+
+        else:
+
+            raise ValueError('# Please enter either ''pls'',''ada'',''rfr'', ''xgb'', or ''gbr''')
+
         # QSRR Optimisation
         print('    ----------------- QSRR Optimisation ---------------')
 
@@ -178,78 +234,181 @@ def optimization(method, x_train_opt, y_train_opt, x_test_opt, y_test_opt, n_spl
         initial_rmse_test = get_rmse(y_test_opt, y_hat_test_init)
         regopt_start = time()
 
-        toprint = '    ---------------- Initial Parameters ---------------\n' \
-                  '    n_estimators: {:.0f}\n' \
-                  '    learning_rate: {:.2f} \n' \
-                  '    max_depth: {:.0f}\n' \
-                  '    Initial RMSEE: {:.2f}' \
-                  '    Initial RMSEP: {:.2f}\n' \
-                  '    ---------------------------------------------------' \
-            .format(initial['n_estimators'],
-                    initial['learning_rate'],
-                    initial['max_depth'],
-                    initial_rmse_train,
-                    initial_rmse_test
-                    )
+        # Objective functions
+        if method in ['xbr', 'gbr']:
 
-        print(toprint)
+            toprint = '    ---------------- Initial Parameters ---------------\n' \
+                      '    n_estimators: {:.0f}\n' \
+                      '    learning_rate: {:.2f} \n' \
+                      '    max_depth: {:.0f}\n' \
+                      '    Initial RMSEE: {:.2f}' \
+                      '    Initial RMSEP: {:.2f}\n' \
+                      '    ---------------------------------------------------' \
+                .format(initial['n_estimators'],
+                        initial['learning_rate'],
+                        initial['max_depth'],
+                        initial_rmse_train,
+                        initial_rmse_test
+                        )
 
-        # Creating bounds
-        n_est_min, n_est_max = 10, 500
-        lr_min, lr_max = 0.01, 0.9
-        max_depth_min, max_depth_max = 1, 5
-        bounds = optimize.Bounds([n_est_min, lr_min, max_depth_min],
-                                 [n_est_max, lr_max, max_depth_max])
+            print(toprint)
 
-        # Creating optimisation function, needs to be in each
-        def reg_objective(x):
-            # Descaling Parameters
-            n_est = int(round(x[0], decimals=0))
-            lr = x[1]
-            max_depth = int(round(x[2], decimals=0))
+            # Creating bounds
+            n_est_min, n_est_max = 10, 500
+            lr_min, lr_max = 0.01, 0.9
+            max_depth_min, max_depth_max = 1, 5
+            bounds = optimize.Bounds([n_est_min, lr_min, max_depth_min],
+                                     [n_est_max, lr_max, max_depth_max])
 
-            opt_model = reg_opt.set_params(n_estimators=n_est, learning_rate=lr, max_depth=max_depth)
+            final_values = optimize.differential_evolution(reg_objective, bounds, workers=proc_i, updating='deferred',
+                                                           mutation=(1.5, 1.9), popsize=20)
+            reg_params = {'n_estimators': int(round(final_values.x[0], decimals=0)),
+                          'learning_rate': final_values.x[1],
+                          'max_depth': int(round(final_values.x[2], decimals=0))}
 
-            # CV score
-            scorer_ens_opt = make_scorer(get_rmse)
-            score = cross_val_score(opt_model, x_train_opt, y_train_opt, cv=KFold(n_splits=n_splits),
-                                    scoring=scorer_ens_opt)
+            reg_opt.set_params(**reg_params).fit(x_train_opt, y_train_opt)
 
-            return mean(score)
+            # Final Params
+            y_hat = reg_opt.predict(x_train_opt)
+            final_rmse_train = get_rmse(y_train_opt, y_hat)
+            y_hat = reg_opt.predict(x_test_opt)
+            final_rmse_test = get_rmse(y_test_opt, y_hat)
+            regopt_time = time() - regopt_start
 
-        final_values = optimize.differential_evolution(reg_objective, bounds, workers=proc_i, updating='deferred',
-                                                       mutation=(1.5, 1.9), popsize=20)
-        reg_params = {'n_estimators': int(round(final_values.x[0], decimals=0)),
-                      'learning_rate': final_values.x[1],
-                      'max_depth': int(round(final_values.x[2], decimals=0))}
+            toprint = '    ----------------- Final Parameters ----------------\n' \
+                      '    n_estimators: {:.0f}\n' \
+                      '    learning_rate: {:.2f} \n' \
+                      '    max_depth: {:.0f}\n' \
+                      '    Final RMSECV: {:.3f}\n' \
+                      '    Final RMSEE: {:.2f}' \
+                      '    Final RMSEP: {:.2f}\n' \
+                      '    Optimisation Duration: {}\n' \
+                      '    ---------------------------------------------------\n' \
+                .format(int(round(final_values.x[0], decimals=0)),
+                        final_values.x[1],
+                        int(round(final_values.x[2], decimals=0)),
+                        final_values.fun,
+                        final_rmse_train,
+                        final_rmse_test,
+                        strftime("%H:%M:%S", gmtime(regopt_time))
+                        )
+            print(toprint)
 
-        reg_opt.set_params(**reg_params).fit(x_train_opt, y_train_opt)
+        elif method == 'rfr':
 
-        # Final Params
-        y_hat = reg_opt.predict(x_train_opt)
-        final_rmse_train = get_rmse(y_train_opt, y_hat)
-        y_hat = reg_opt.predict(x_test_opt)
-        final_rmse_test = get_rmse(y_test_opt, y_hat)
-        regopt_time = time() - regopt_start
+            toprint = '    ---------------- Initial Parameters ---------------\n' \
+                      '    n_estimators: {:.0f}\n' \
+                      '    learning_rate: {:.0f}\n' \
+                      '    min_samples_leaf: {:.0f}\n' \
+                      '    Initial RMSEE: {:.2f}' \
+                      '    Initial RMSEP: {:.2f}\n' \
+                      '    ---------------------------------------------------' \
+                .format(initial['n_estimators'],
+                        initial['learning_rate'],
+                        initial['min_samples_leaf'],
+                        initial_rmse_train,
+                        initial_rmse_test
+                        )
 
-        toprint = '    ----------------- Final Parameters ----------------\n' \
-                  '    n_estimators: {:.0f}\n' \
-                  '    learning_rate: {:.2f} \n' \
-                  '    max_depth: {:.0f}\n' \
-                  '    Final RMSECV: {:.3f}\n' \
-                  '    Final RMSEE: {:.2f}' \
-                  '    Final RMSEP: {:.2f}\n' \
-                  '    Optimisation Duration: {}\n' \
-                  '    ---------------------------------------------------\n' \
-            .format(int(round(final_values.x[0], decimals=0)),
-                    final_values.x[1],
-                    int(round(final_values.x[2], decimals=0)),
-                    final_values.fun,
-                    final_rmse_train,
-                    final_rmse_test,
-                    strftime("%H:%M:%S", gmtime(regopt_time))
-                    )
-        print(toprint)
+            print(toprint)
+
+            # Creating bounds
+            n_est_min, n_est_max = 10, 500
+            lr_min, lr_max = 0.01, 0.9
+            min_samp_leaf_min, min_samp_leaf_max = 2, 5
+            bounds = optimize.Bounds([n_est_min, lr_min, min_samp_leaf_min],
+                                     [n_est_max, lr_max, min_samp_leaf_max])
+
+            final_values = optimize.differential_evolution(reg_objective, bounds, workers=proc_i, updating='deferred',
+                                                           mutation=(1.5, 1.9), popsize=20)
+            reg_params = {'n_estimators': int(round(final_values.x[0], decimals=0)),
+                          'learning_rate': final_values.x[1],
+                          'min_samples_leaf': int(round(final_values.x[2], decimals=0))}
+
+            reg_opt.set_params(**reg_params).fit(x_train_opt, y_train_opt)
+
+            # Final Params
+            y_hat = reg_opt.predict(x_train_opt)
+            final_rmse_train = get_rmse(y_train_opt, y_hat)
+            y_hat = reg_opt.predict(x_test_opt)
+            final_rmse_test = get_rmse(y_test_opt, y_hat)
+            regopt_time = time() - regopt_start
+
+            toprint = '    ----------------- Final Parameters ----------------\n' \
+                      '    n_estimators: {:.0f}\n' \
+                      '    learning_rate: {:.2f} \n' \
+                      '    min_samples_leaf: {:.0f}\n' \
+                      '    Final RMSECV: {:.3f}\n' \
+                      '    Final RMSEE: {:.2f}' \
+                      '    Final RMSEP: {:.2f}\n' \
+                      '    Optimisation Duration: {}\n' \
+                      '    ---------------------------------------------------\n' \
+                .format(int(round(final_values.x[0], decimals=0)),
+                        final_values.x[1],
+                        int(round(final_values.x[2], decimals=0)),
+                        final_values.fun,
+                        final_rmse_train,
+                        final_rmse_test,
+                        strftime("%H:%M:%S", gmtime(regopt_time))
+                        )
+            print(toprint)
+
+        elif method == 'ada':
+
+            toprint = '    ---------------- Initial Parameters ---------------\n' \
+                      '    n_estimators: {:.0f}\n' \
+                      '    learning_rate: {:.0f}\n' \
+                      '    Initial RMSEE: {:.2f}' \
+                      '    Initial RMSEP: {:.2f}\n' \
+                      '    ---------------------------------------------------' \
+                .format(initial['n_estimators'],
+                        initial['learning_rate'],
+                        initial_rmse_train,
+                        initial_rmse_test
+                        )
+
+            print(toprint)
+
+            # Creating bounds
+            n_est_min, n_est_max = 10, 500
+            lr_min, lr_max = 0.01, 0.9
+            bounds = optimize.Bounds([n_est_min, lr_min],
+                                     [n_est_max, lr_max])
+
+            final_values = optimize.differential_evolution(reg_objective, bounds, workers=proc_i, updating='deferred',
+                                                           mutation=(1.5, 1.9), popsize=20)
+            reg_params = {'n_estimators': int(round(final_values.x[0], decimals=0)),
+                          'learning_rate': final_values.x[1]}
+
+            reg_opt.set_params(**reg_params).fit(x_train_opt, y_train_opt)
+
+            # Final Params
+            y_hat = reg_opt.predict(x_train_opt)
+            final_rmse_train = get_rmse(y_train_opt, y_hat)
+            y_hat = reg_opt.predict(x_test_opt)
+            final_rmse_test = get_rmse(y_test_opt, y_hat)
+            regopt_time = time() - regopt_start
+
+            toprint = '    ----------------- Final Parameters ----------------\n' \
+                      '    n_estimators: {:.0f}\n' \
+                      '    learning_rate: {:.2f} \n' \
+                      '    Final RMSECV: {:.3f}\n' \
+                      '    Final RMSEE: {:.2f}' \
+                      '    Final RMSEP: {:.2f}\n' \
+                      '    Optimisation Duration: {}\n' \
+                      '    ---------------------------------------------------\n' \
+                .format(int(round(final_values.x[0], decimals=0)),
+                        final_values.x[1],
+                        final_values.fun,
+                        final_rmse_train,
+                        final_rmse_test,
+                        strftime("%H:%M:%S", gmtime(regopt_time))
+                        )
+            print(toprint)
+
+        else:
+
+            raise ValueError('# Please enter either ''pls'',''ada'',''rfr'', ''xgb'', or ''gbr''')
 
         with open(results_dir + '2019-QSRR_IC_PartIV-{}_{}_opt_run_{}.txt'.format(
                 datetime.now().strftime('%d_%m_%Y-%H_%M'), method, count), "w") as text_file:

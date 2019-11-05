@@ -112,15 +112,16 @@ if opt_prompt == 'yes':
     from src.modules.regr import optimization
 
     # Optimization of (hyper-)parameters
-    reg_params = optimization(method, x_train_opt, y_train_opt, x_test_opt, y_train_opt,
+    reg_params = optimization(method, x_train_opt, y_train_opt, x_test_opt, y_test_opt,
                               n_splits, proc_i, results_dir, count)
 
 else:
 
-    # List of default parameters
+    # List of optimized parameters
     reg_params_list = [{'n_estimators': 497, 'learning_rate': 0.23, 'max_depth': 2},
                        {'n_estimators': 485, 'learning_rate': 0.23, 'max_depth': 2}, {'latent_variables': 4},
-                       {'n_estimators': 497, 'max_depth': 2}, {'n_estimators': 497, 'learning_rate': 0.23}]
+                       {'n_estimators': 200, 'max_depth': 5, 'min_samples_leaf': 1},
+                       {'n_estimators': 501, 'learning_rate': 0.23}]
 
     # Default parameter conditionals
     reg_params = reg_params_list[0] if method == 'xgb' else reg_params_list[1] if method == 'gbr' \
