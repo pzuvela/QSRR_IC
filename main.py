@@ -15,7 +15,7 @@ main.py max_iter count proc_i method opt_prompt n_splits (optional)
 """
 from os import getcwd, makedirs
 from os.path import exists
-from sys import argv
+from sys import argv, stdout
 from time import time, strftime, gmtime
 from datetime import datetime
 from pandas import read_csv, DataFrame
@@ -200,7 +200,12 @@ def model_parallel(arg_iter):
 
     rmsre_grad_par = get_rmse(tg_exp, tg_total)
 
+    # Completion of iterations
     print('Iteration #{}/{} completed'.format(arg_iter[0] + 1, max_iter))
+
+    # Flush the output buffer // fix the logging issues
+    stdout.flush()
+
     return rmsre_train_par, rmsre_test_par, y_data, y_data_hat_par, rmsre_grad_par, tg_exp, tg_total
 
 
@@ -246,4 +251,5 @@ if __name__ == '__main__':
     run_time = time() - start_time
 
     # Exit flag
-    exit('Simulation completed successfully !\nRun-time: {}\n'.format(strftime("%H:%M:%S", gmtime(run_time))))
+    print('Calculations completed successfully !\nRun-time: {}\n'.format(strftime("%H:%M:%S", gmtime(run_time))))
+    exit('Success !')
