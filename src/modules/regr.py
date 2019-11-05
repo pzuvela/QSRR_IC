@@ -172,10 +172,10 @@ def optimization(method, x_train_opt, y_train_opt, x_test_opt, y_test_opt, n_spl
 
         # Initial Params
         initial = reg_opt.get_params()
-        y_hat_opt = reg_opt.predict(x_train_opt)
-        initial_rmse_train = get_rmse(y_train_opt, y_hat_opt)
-        y_hat_opt = reg_opt.predict(x_test_opt)
-        initial_rmse_test = get_rmse(y_test_opt, y_hat_opt)
+        y_hat_train_init = reg_opt.predict(x_train_opt)
+        initial_rmse_train = get_rmse(y_train_opt, y_hat_train_init)
+        y_hat_test_init = reg_opt.predict(x_test_opt)
+        initial_rmse_test = get_rmse(y_test_opt, y_hat_test_init)
         regopt_start = time()
 
         toprint = '    ---------------- Initial Parameters ---------------\n' \
