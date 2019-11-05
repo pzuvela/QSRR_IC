@@ -26,13 +26,6 @@ from multiprocessing import Pool
 from src.modules.func import get_rmse
 from src.modules.iso2grad import model
 
-# Directories
-curr_dir = getcwd()
-data_dir, results_dir = curr_dir + '/data/', curr_dir + '/results/'
-
-# Create the results directory if it does not exist
-makedirs(results_dir) if not exists(results_dir) else []
-
 """ Fixed variables 
 
 Input arguments:
@@ -54,6 +47,13 @@ n_splits = int(argv[6]) if opt_prompt == "yes" else []
 # Make sure that method is 'xgb', 'gbr', 'pls', 'rfr', or 'ada'
 assert method in ['xbr', 'gbr', 'pls', 'rfr', 'ada'], \
     'Please enter either ''pls'', ''xgb'',''rfr'',''ada'', or ''gbr'' !'
+
+# Directories
+curr_dir = getcwd()
+data_dir, results_dir = curr_dir + '/data/', curr_dir + '/results/' + method + '/'
+
+# Create the results directory if it does not exist
+makedirs(results_dir) if not exists(results_dir) else []
 
 """ 
 Loading data into Pandas DataFrames & Numpy arrays:

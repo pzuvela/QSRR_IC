@@ -27,9 +27,8 @@ method, max_iter = exit('Usage: python proc_results.py method max_iter') if not 
 
 # Directories
 curr_dir = getcwd()
-data_dir = curr_dir + '/data/'
-results_dir = curr_dir + '/results/'
-merged_results_dir = curr_dir + '/results_merged/'
+data_dir, results_dir = curr_dir + '/data/', curr_dir + '/results/' + method + '/'
+merged_results_dir = curr_dir + '/results_merged/' + method + '/'
 
 # Create the results directory if it does not exist
 makedirs(merged_results_dir) if not exists(merged_results_dir) else []
