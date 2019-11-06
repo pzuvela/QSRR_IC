@@ -118,10 +118,10 @@ class RegressionHyperParamOpt:
 
     Implented models:
     1) PLS (CV)
-    2) Gradient Boosting (sklearn) (DE)
-    3) Extreme Boosting (xgBoost) (DE)
-    4) RFR (DE)
-    5) AdaBoost (DE)
+    2) Gradient Boosting (sklearn) (DE & CV)
+    3) Extreme Boosting (xgBoost) (DE & CV)
+    4) RFR (DE & CV)
+    5) AdaBoost (DE & CV)
 
     """
 
@@ -302,12 +302,12 @@ class RegressionHyperParamOpt:
 
             params_final = self.params_final
 
-            self.reg_opt.set_params(**self.params_final).fit(self.x_train_opt, self.y_train_opt)
+            reg_de.set_params(**self.params_final).fit(self.x_train_opt, self.y_train_opt)
 
             # Final Params
-            y_hat_train_final = self.reg_opt.predict(self.x_train_opt)
+            y_hat_train_final = reg_de.predict(self.x_train_opt)
             rmse_train_final = self.get_rmse(self.y_train_opt, y_hat_train_final)
-            y_hat_test_final = self.reg_opt.predict(self.x_test_opt)
+            y_hat_test_final = reg_de.predict(self.x_test_opt)
             rmse_test_final = self.get_rmse(self.y_test_opt, y_hat_test_final)
             regopt_time = self.time() - regopt_start
 
