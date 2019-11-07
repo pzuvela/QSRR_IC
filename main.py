@@ -3,11 +3,11 @@
 QSRR model development in IC Part IV project
 
 Required packages:
-1) Pandas
-2) Numpy
+1) Numpy
+2) Pandas
 3) Scipy
-4) xgBoost
-5) scikit-learn
+4) scikit-learn
+5) xgBoost
 
 Usage:
 main.py max_iter count proc_i method opt_prompt n_splits (optional)
@@ -23,8 +23,7 @@ from numpy import genfromtxt
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from multiprocessing import Pool
-from src.modules.func import get_rmse
-from src.modules.iso2grad import model
+from src.modules.iso2grad import ig_model as ig
 
 """ Fixed variables 
 
@@ -86,7 +85,7 @@ raw_data.drop(raw_data[raw_data['logk'] == 0.000].index, inplace=True)
 x_data, y_data = raw_data.drop(['tR', 'logk'], axis=1), raw_data[['logk']].values.ravel()
 
 """ 
-(Hyper-)parameter optimization
+----------------- (Hyper-)parameter optimization -----------------
 """
 # Optimization conditional
 if opt_prompt == 'yes':
@@ -113,8 +112,8 @@ if opt_prompt == 'yes':
 
     # Optimization of (hyper-)parameters
     RegressionHyperParamOpt = RegressionHyperParamOpt(method, x_train_opt, y_train_opt, x_test_opt, y_test_opt,
-                                                      n_splits, proc_i, results_dir, count)
-    reg_params = RegressionHyperParamOpt.optimize()
+                                                      n_splits, proc_i, results_dir, count).optimize()
+    reg_params = RegressionHyperParamOpt.params_final
 
 else:
 
@@ -158,24 +157,23 @@ def model_parallel(arg_iter):
     # Scale all of the data (using the training mean & std)
     x_data_par = DataFrame(sc_par.transform(x_data), columns=x_data.columns).values
 
-    trset = [x_train_par, x_test_par, y_train_par, y_test_par]
-
-    """ 
-    # Converted to a class with regressors
-    """
-
+    # Import the RegressorsQSRR class
     from src.modules.regr import RegressorsQSRR
 
-    reg, _, _ = RegressorsQSRR(method, trset, reg_params).regress()
+    # Instantiate the RegressorsQSRR class with data and run the regress() method
+    reg = RegressorsQSRR(method, [x_train_par, x_test_par, y_train_par, y_test_par], reg_params).regress()
 
-    y_hat_train_par, y_hat_test_par, y_data_hat_par = reg.predict(x_train_par).ravel(), \
-        reg.predict(x_test_par).ravel(), reg.predict(x_data_par).ravel()  # Bug fix
-    rmsre_train_par, rmsre_test_par = get_rmse(y_train_par, y_hat_train_par), get_rmse(y_test_par, y_hat_test_par)
+    # Predict y-values using the model
+    y_data_hat_par = reg.model.predict(x_data_par).ravel()
 
-    # Predicted retention times
-    tg_total = model(reg, iso_data, t_void, grad_data, sc_par).flatten(order='F')
+    # Run the metrics() method to calculate the values of the model metrics
+    reg = reg.metrics()
 
-    rmsre_grad_par = get_rmse(tg_exp, tg_total)
+    # Predicted gradient retention times
+    tg_total = ig(reg, iso_data, t_void, grad_data, sc_par).flatten(order='F')
+
+    # Gradient retention time errors
+    _, _, rmse_grad_par = reg.get_errors(tg_exp, tg_total)
 
     # Completion of iterations
     print('Iteration #{}/{} completed'.format(arg_iter[0] + 1, max_iter))
@@ -183,7 +181,7 @@ def model_parallel(arg_iter):
     # Flush the output buffer // fix the logging issues
     stdout.flush()
 
-    return rmsre_train_par, rmsre_test_par, y_data, y_data_hat_par, rmsre_grad_par, tg_exp, tg_total
+    return reg.rmse_train, reg.rmse_test, y_data, y_data_hat_par, rmse_grad_par, tg_exp, tg_total
 
 
 # Main section

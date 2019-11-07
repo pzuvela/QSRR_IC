@@ -21,10 +21,10 @@ Notes:
 """
 
 from importlib import import_module
-from src.modules.func import get_rmse
 from sklearn.metrics import make_scorer
 from sklearn.model_selection import KFold, cross_val_score
 from numpy import mean
+from src.modules.func import rmse_scorer
 
 
 class RegressorsQSRR:
@@ -37,6 +37,11 @@ class RegressorsQSRR:
         :param dataset: a list with data: [x_train, x_test, y_train, y_test]
         :param reg_params: hyper-parameters of the model selected with model_str [default: None]
         """
+
+        # Importing numpy modules
+        self.round, self.mean, self.zeros, self.sqrt, self.square, self.array = [getattr(import_module('numpy'), i)
+                                                                                 for i in ['round', 'mean', 'zeros',
+                                                                                           'sqrt', 'square', 'array']]
 
         # Dictionary of regressors
         self.models = {'xgb': (['xgboost'], ['XGBRegressor']),
@@ -53,6 +58,11 @@ class RegressorsQSRR:
         # Regression parameters
         self.reg_params = reg_params
 
+        # Predictions & model
+        self.y_hat_train, self.y_hat_test, self.model = self.array([]), self.array([]), object
+        self.mre_train, self.rmsre_train, self.rmse_train = self.array([]), self.array([]), self.array([])
+        self.mre_test, self.rmsre_test, self.rmse_test = self.array([]), self.array([]), self.array([])
+
     def regress(self):
 
         # Import regressor module and assign object to model
@@ -63,12 +73,26 @@ class RegressorsQSRR:
         # Update regression parameters if not None
         if self.reg_params is not None:
             model.set_params(**self.reg_params)
+
         model.fit(self.x_train, self.y_train)
 
-        y_hat_test = model.predict(self.x_test).ravel()
-        y_hat_train = model.predict(self.x_train).ravel()
+        self.y_hat_train = model.predict(self.x_train).ravel()
+        self.y_hat_test = model.predict(self.x_test).ravel()
 
-        return model, [self.x_train, self.y_train, y_hat_train], [self.x_test, self.y_test, y_hat_test]
+        self.model = model
+
+        return self
+
+    @staticmethod
+    def get_errors(y, y_hat):
+        square, sqrt, np_abs = [getattr(import_module('numpy'), i) for i in ['square', 'sqrt', 'abs']]
+        return 100 * np_abs((y_hat.ravel() - y) / y).mean(), sqrt(square(100 * (y_hat - y) / y).mean()), \
+            sqrt(square(y_hat - y).mean())
+
+    def metrics(self):
+        self.mre_train, self.rmsre_train, self.rmse_train = self.get_errors(self.y_train, self.y_hat_train)
+        self.mre_test, self.rmsre_test, self.rmse_test = self.get_errors(self.y_test, self.y_hat_test)
+        return self
 
 
 class RegressionHyperParamOpt:
@@ -141,8 +165,7 @@ class RegressionHyperParamOpt:
         self.datetime = getattr(import_module('datetime'), 'datetime')
 
         # Import RMSE & knee point functions
-        self.get_rmse, self.get_rmsre, self.knee = [getattr(import_module('src.modules.func'), i) for i in [
-            'get_rmse', 'get_rmsre', 'knee']]
+        self.knee = getattr(import_module('src.modules.func'), 'knee')
 
         # Dictionary of models
         self.models = {'xgb': (['xgboost'], ['XGBRegressor']),
@@ -160,7 +183,7 @@ class RegressionHyperParamOpt:
         # Import model
         self.reg_opt = (getattr(import_module(*self.models[self.method][0]), *self.models[self.method][1]))
 
-        # Dictionary of file types for each hyper-parameter
+        # Dictionary of types for each hyper-parameter
         self.params_ftypes = {'xgb': ({'n_estimators': int, 'learning_rate': float, 'max_depth': int}),
                               'gbr': ({'n_estimators': int, 'learning_rate': float, 'max_depth': int}),
                               'rfr': ({'n_estimators': int, 'max_depth': int, 'min_samples_leaf': int}),
@@ -203,7 +226,7 @@ class RegressionHyperParamOpt:
             if method == 'xgb' else reg_opt().set_params(**params_opt[method])
 
         # CV score
-        scorer_ens_opt = make_scorer(get_rmse)
+        scorer_ens_opt = make_scorer(rmse_scorer)
         score = cross_val_score(opt_model, x_train_opt, y_train_opt, cv=KFold(n_splits=n_splits),
                                 scoring=scorer_ens_opt)
 
@@ -226,9 +249,9 @@ class RegressionHyperParamOpt:
 
             # Initial predictions
             y_hat_train_init = reg_de.predict(self.x_train_opt)
-            rmse_train_init = self.get_rmse(self.y_train_opt, y_hat_train_init)
             y_hat_test_init = reg_de.predict(self.x_test_opt)
-            rmse_test_init = self.get_rmse(self.y_test_opt, y_hat_test_init)
+            rmse_train_init = rmse_scorer(self.y_train_opt, y_hat_train_init)
+            rmse_test_init = rmse_scorer(self.y_test_opt, y_hat_test_init)
             regopt_start = self.time()
 
             toprint_init = '    --------------------- Initial Parameters ---------------------\n' \
@@ -267,9 +290,9 @@ class RegressionHyperParamOpt:
 
             # Final Params
             y_hat_train_final = reg_de.predict(self.x_train_opt)
-            rmse_train_final = self.get_rmse(self.y_train_opt, y_hat_train_final)
+            rmse_train_final = rmse_scorer(self.y_train_opt, y_hat_train_final)
             y_hat_test_final = reg_de.predict(self.x_test_opt)
-            rmse_test_final = self.get_rmse(self.y_test_opt, y_hat_test_final)
+            rmse_test_final = rmse_scorer(self.y_test_opt, y_hat_test_final)
             regopt_time = self.time() - regopt_start
 
             toprint_final = '    ----------------------- Final Parameters ----------------------\n' \
@@ -311,7 +334,7 @@ class RegressionHyperParamOpt:
                 # Pre-loading variables
                 j = 0
                 # Construct Scoring Object
-                scorer_pls_opt = self.make_scorer(self.get_rmsre, greater_is_better=False)
+                scorer_pls_opt = self.make_scorer(rmse_scorer, greater_is_better=False)
                 rmse_test = self.cross_val_score(self.reg_opt(), self.x_train_opt, self.y_train_opt,
                                                  cv=self.KFold(n_splits=self.n_splits), scoring=scorer_pls_opt)
                 for train_i, test_i in kf.split(self.x_train_opt, self.y_train_opt):
@@ -325,7 +348,7 @@ class RegressionHyperParamOpt:
                     reg_cv = self.reg_opt().fit(x_train_cv, y_train_cv)
                     # Generating RMSE
                     y_test_hat_cv = reg_cv.predict(x_test_cv).ravel()
-                    rmse_test[j] = self.get_rmsre(y_test_cv, y_test_hat_cv)
+                    rmse_test[j] = rmse_scorer(y_test_cv, y_test_hat_cv)
                     rmse_test[j] = (self.sqrt(self.mean_squared_error(y_test_cv, y_test_hat_cv)))
                     j += 1
                 # Gathering Statistics
@@ -338,7 +361,7 @@ class RegressionHyperParamOpt:
 
             print(toprint_final)
 
-            params_final = {'n_components': nlvs}
+            self.params_final = {'n_components': lvs}
 
         else:
 
@@ -348,4 +371,4 @@ class RegressionHyperParamOpt:
                 self.datetime.now().strftime('%d_%m_%Y-%H_%M'), self.method, self.count), "w") as text_file:
             text_file.write(toprint_final)
 
-        return params_final
+        return self

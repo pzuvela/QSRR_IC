@@ -1,24 +1,10 @@
-from numpy import abs, sqrt, square, argmax, sort, vstack, transpose
+from numpy import sqrt, square, argmax, sort, vstack, transpose
 from pandas import DataFrame, concat, read_csv
-from sklearn.metrics import confusion_matrix
 from glob import glob
 
 
-def get_mre(y_data, y_hat):
-    return 100 * abs((y_hat.ravel() - y_data) / y_data).mean()
-
-
-def get_rmsre(y_data, y_hat):
-    return sqrt(square(100 * (y_hat - y_data) / y_data).mean())
-
-
-def get_rmse(y_data, y_hat):
+def rmse_scorer(y_data, y_hat):
     return sqrt(square(y_hat - y_data).mean())
-
-
-def get_mcc(y_data, y_hat):
-    tn, fp, fn, tp = confusion_matrix(y_data, y_hat).ravel()
-    return ((tp * tn) - (fp * fn)) / ((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)) ** 0.5
 
 
 def fileprint(string, directory):
