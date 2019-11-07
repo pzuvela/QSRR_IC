@@ -120,7 +120,7 @@ else:
 
     # List of optimized parameters
     reg_params_list = [{'n_estimators': 497, 'learning_rate': 0.23, 'max_depth': 2},
-                       {'n_estimators': 485, 'learning_rate': 0.23, 'max_depth': 2}, {'latent_variables': 4},
+                       {'n_estimators': 485, 'learning_rate': 0.23, 'max_depth': 2}, {'n_components': 4},
                        {'n_estimators': 200, 'max_depth': 5, 'min_samples_leaf': 1},
                        {'n_estimators': 439, 'learning_rate': 0.61}]
 
@@ -161,40 +161,15 @@ def model_parallel(arg_iter):
     trset = [x_train_par, x_test_par, y_train_par, y_test_par]
 
     """ 
-    TODO:
-    1) Reduce to a few lines by dynamically importing the functions from a list
-    2) Convert to a class
+    # Converted to a class with regressors
     """
 
-    # XGB
-    if method == 'xgb':
-        from src.modules.regr import regress_xgbr
-        reg, _, _ = regress_xgbr(trset, reg_params=reg_params)
+    from src.modules.regr import RegressorsQSRR
 
-    # GBR
-    elif method == 'gbr':
-        from src.modules.regr import regress_gbr
-        reg, _, _ = regress_gbr(trset, reg_params=reg_params)
+    reg, _, _ = RegressorsQSRR(method, trset, reg_params).regress()
 
-    # RFR
-    elif method == 'rfr':
-
-        from src.modules.regr import regress_rfr
-        reg, _, _ = regress_rfr(trset, reg_params=reg_params)
-
-    # ADA
-    elif method == 'ada':
-
-        from src.modules.regr import regress_ada
-        reg, _, _ = regress_ada(trset, reg_params=reg_params)
-
-    # Default (XGB)
-    else:
-        from src.modules.regr import regress_xgbr
-        reg, _, _ = regress_xgbr(trset, reg_params=reg_params)
-
-    y_hat_train_par, y_hat_test_par, y_data_hat_par = reg.predict(x_train_par), reg.predict(x_test_par), \
-        reg.predict(x_data_par)
+    y_hat_train_par, y_hat_test_par, y_data_hat_par = reg.predict(x_train_par).ravel(), \
+        reg.predict(x_test_par).ravel(), reg.predict(x_data_par).ravel()  # Bug fix
     rmsre_train_par, rmsre_test_par = get_rmse(y_train_par, y_hat_train_par), get_rmse(y_test_par, y_hat_test_par)
 
     # Predicted retention times

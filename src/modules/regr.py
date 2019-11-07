@@ -8,6 +8,12 @@ Functions related to regression models
     5) regress_ada  : ADB modelling, training & prediction
     4) optimization : Optimization of hyper-parameters for PLS, GBR and XGB
 
+    ## Converted to classes RegressorsQSRR and RegressionHyperParamOpt
+
+    ## TODO:
+    ## 1) Comment the new code
+    ## 2) Re-structure
+
 Notes:
     1) Optimization of the number of latent variables for PLS is performed using K-fold CV
     2) Hyper-parameter optimization for GBR and XGB is performed using differential evolution
@@ -21,94 +27,48 @@ from sklearn.model_selection import KFold, cross_val_score
 from numpy import mean
 
 
-def regress_pls(trset, reg_params=None):
+class RegressorsQSRR:
 
-    from sklearn.cross_decomposition import PLSRegression
+    def __init__(self, model_str, dataset, reg_params=None):
 
-    x_train, x_test, y_train, y_test = trset
+        """
 
-    # Default number of LVs
-    model = PLSRegression(n_components=4)
-    if reg_params is not None:
-        model.set_params(**reg_params)
-    model.fit(x_train, y_train)
+        :param model_str: string to query the dictionary of models [xgb, gbr, rfr, ada, pls]
+        :param dataset: a list with data: [x_train, x_test, y_train, y_test]
+        :param reg_params: hyper-parameters of the model selected with model_str [default: None]
+        """
 
-    y_hat_test = model.predict(x_test).ravel()
-    y_hat_train = model.predict(x_train).ravel()
+        # Dictionary of regressors
+        self.models = {'xgb': (['xgboost'], ['XGBRegressor']),
+                       'gbr': (['sklearn.ensemble'], ['GradientBoostingRegressor']),
+                       'rfr': (['sklearn.ensemble'], ['RandomForestRegressor']),
+                       'ada': (['sklearn.ensemble'], ['AdaBoostRegressor']),
+                       'pls': (['sklearn.cross_decomposition'], ['PLSRegression'])}
+        # Model name
+        self.model_str = model_str
 
-    return model, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test]
+        # Data
+        self.x_train, self.x_test, self.y_train, self.y_test = dataset
 
+        # Regression parameters
+        self.reg_params = reg_params
 
-def regress_gbr(trset, reg_params=None):
+    def regress(self):
 
-    from sklearn.ensemble import GradientBoostingRegressor
+        # Import regressor module and assign object to model
+        model = (getattr(import_module(*self.models[self.model_str][0]), *self.models[self.model_str][1]))
 
-    x_train, x_test, y_train, y_test = trset
+        model = model(objective="reg:squarederror") if self.model_str == 'xgb' else model()
 
-    # Gradient Boosting Regressor
-    model = GradientBoostingRegressor()
-    if reg_params is not None:
-        model.set_params(**reg_params)
-    model.fit(x_train, y_train)
+        # Update regression parameters if not None
+        if self.reg_params is not None:
+            model.set_params(**self.reg_params)
+        model.fit(self.x_train, self.y_train)
 
-    y_hat_train = model.predict(x_train).ravel()
-    y_hat_test = model.predict(x_test).ravel()
+        y_hat_test = model.predict(self.x_test).ravel()
+        y_hat_train = model.predict(self.x_train).ravel()
 
-    return model, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test]
-
-
-def regress_xgbr(trset, reg_params=None):
-
-    from xgboost import XGBRegressor
-
-    x_train, x_test, y_train, y_test = trset
-
-    # eXtreme Gradient Boosting Regressor
-    model = XGBRegressor(objective="reg:squarederror")
-    if reg_params is not None:
-        model.set_params(**reg_params)
-    model.fit(x_train, y_train)
-
-    y_hat_train = model.predict(x_train).ravel()
-    y_hat_test = model.predict(x_test).ravel()
-
-    return model, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test]
-
-
-def regress_rfr(trset, reg_params=None):
-
-    from sklearn.ensemble import RandomForestRegressor
-
-    x_train, x_test, y_train, y_test = trset
-
-    # Random Forest Regressor
-    model = RandomForestRegressor()
-    if reg_params is not None:
-        model.set_params(**reg_params)
-    model.fit(x_train, y_train)
-
-    y_hat_train = model.predict(x_train).ravel()
-    y_hat_test = model.predict(x_test).ravel()
-
-    return model, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test]
-
-
-def regress_ada(trset, reg_params=None):
-
-    from sklearn.ensemble import AdaBoostRegressor
-
-    x_train, x_test, y_train, y_test = trset
-
-    # Adaptive Boosting Regressor
-    model = AdaBoostRegressor()
-    if reg_params is not None:
-        model.set_params(**reg_params)
-    model.fit(x_train, y_train)
-
-    y_hat_train = model.predict(x_train).ravel()
-    y_hat_test = model.predict(x_test).ravel()
-
-    return model, [x_train, y_train, y_hat_train], [x_test, y_test, y_hat_test]
+        return model, [self.x_train, self.y_train, y_hat_train], [self.x_test, self.y_test, y_hat_test]
 
 
 class RegressionHyperParamOpt:
@@ -116,7 +76,7 @@ class RegressionHyperParamOpt:
 
     (Hyper-)parameter optimization using differential evolution & cross-validation
 
-    Implented models:
+    Implemeted models:
     1) PLS (CV)
     2) Gradient Boosting (sklearn) (DE & CV)
     3) Extreme Boosting (xgBoost) (DE & CV)
@@ -207,22 +167,23 @@ class RegressionHyperParamOpt:
                               'ada': ({'n_estimators': int, 'learning_rate': float})}
 
         # Empty dictionary of hyper-parameters for the objective function
-        self.params_opt = {'xgb': ({'n_estimators': int(), 'learning_rate': float, 'max_depth': int()}),
-                           'gbr': ({'n_estimators': int(), 'learning_rate': float, 'max_depth': int()}),
+        self.params_opt = {'xgb': ({'n_estimators': int(), 'learning_rate': float(), 'max_depth': int()}),
+                           'gbr': ({'n_estimators': int(), 'learning_rate': float(), 'max_depth': int()}),
                            'rfr': ({'n_estimators': int(), 'max_depth': int(), 'min_samples_leaf': int()}),
                            'ada': ({'n_estimators': int(), 'learning_rate': float()})}
 
         # Empty dictionary of hyper-parameters for the final values
-        self.params_final = {'xgb': ({'n_estimators': int(), 'learning_rate': float, 'max_depth': int()}),
-                             'gbr': ({'n_estimators': int(), 'learning_rate': float, 'max_depth': int()}),
+        self.params_final = {'xgb': ({'n_estimators': int(), 'learning_rate': float(), 'max_depth': int()}),
+                             'gbr': ({'n_estimators': int(), 'learning_rate': float(), 'max_depth': int()}),
                              'rfr': ({'n_estimators': int(), 'max_depth': int(), 'min_samples_leaf': int()}),
                              'ada': ({'n_estimators': int(), 'learning_rate': float()})}
 
         # Dictionary of hyper-parameter ranges
         self.params_ranges = {'xgb':  ({'n_est_lb': 10, 'n_est_ub': 500, 'lr_lb': 0.1, 'lr_ub': 0.9,
                                         'max_depth_lb': 1, 'max_depth_ub': 5}),
-                              'gbr':  ({'n_est_min': 10, 'n_est_max': 500, 'lr_min': 0.1, 'lr_max': 0.9,
-                                        'max_depth_min': 1, 'max_depth_max': 5})}
+                              'gbr':  ({'n_est_lb': 10, 'n_est_ub': 500, 'lr_lb': 0.1, 'lr_ub': 0.9,
+                                        'max_depth_lb': 1, 'max_depth_ub': 5}),
+                              'ada': ({'n_est_lb': 10, 'n_est_ub': 500, 'lr_lb': 0.1, 'lr_ub': 0.9})}
 
     @staticmethod
     def obj_fun(x, opt_list):
@@ -257,7 +218,7 @@ class RegressionHyperParamOpt:
             print('    ----------------- QSRR Optimisation ---------------')
 
             # Initial Params
-            params_init = self.reg_opt().get_params(self.reg_opt())
+            params_init = self.reg_opt().get_params()
 
             # Fit initial model
             reg_de = self.reg_opt(objective="reg:squarederror") if self.method == 'xgb' else self.reg_opt()
@@ -300,9 +261,9 @@ class RegressionHyperParamOpt:
                 self.params_final[self.method][key] = self.params_ftypes[self.method][key](final_values.x[fin_counter])
                 fin_counter += 1
 
-            params_final = self.params_final
+            params_final = self.params_final[self.method]  # Bug fix
 
-            reg_de.set_params(**self.params_final).fit(self.x_train_opt, self.y_train_opt)
+            reg_de.set_params(**params_final).fit(self.x_train_opt, self.y_train_opt)  # Bug fix
 
             # Final Params
             y_hat_train_final = reg_de.predict(self.x_train_opt)
