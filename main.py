@@ -120,9 +120,9 @@ else:
 
     # List of optimized parameters
     reg_params_list = [{'n_estimators': 497, 'learning_rate': 0.23, 'max_depth': 2},
-                       {'n_estimators': 485, 'learning_rate': 0.23, 'max_depth': 2}, {'n_components': 4},
+                       {'n_estimators': 485, 'learning_rate': 0.23, 'max_depth': 2}, {'n_components': 3},
                        {'n_estimators': 200, 'max_depth': 5, 'min_samples_leaf': 1},
-                       {'n_estimators': 439, 'learning_rate': 0.61}]
+                       {'n_estimators': 439, 'learning_rate': 0.61}]  # Changing n_components to optimal: 3
 
     # Default parameter conditionals
     reg_params = reg_params_list[0] if method == 'xgb' else reg_params_list[1] if method == 'gbr' \
