@@ -86,8 +86,10 @@ def ig_model(qsrr_model, iso_data, t_void, grad_data, sc):
                     i_prev = i_next
 
                     # Predict k from the machine learning model for the two gradient concentrations
-                    k1 = 10 ** qsrr_model.model.predict(sc.transform(hstack((conc_grad1, iso_data[b])).reshape((1, -1))))
-                    k2 = 10 ** qsrr_model.model.predict(sc.transform(hstack((conc_grad2, iso_data[b])).reshape((1, -1))))
+                    k1 = 10 ** qsrr_model.model.predict(sc.transform(hstack((conc_grad1, iso_data[b])).
+                                                                     reshape((1, -1))))
+                    k2 = 10 ** qsrr_model.model.predict(sc.transform(hstack((conc_grad2, iso_data[b])).
+                                                                     reshape((1, -1))))
 
                     # Average k between the two gradient concentrations
                     k1_2 = (k2 + k1) / 2
