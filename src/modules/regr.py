@@ -226,7 +226,8 @@ class RegressionHyperParamOpt:
         reg_opt = (getattr(import_module(*models[method][0]), *models[method][1]))
 
         opt_model = reg_opt(objective="reg:squarederror").set_params(**params_opt[method]) \
-            if method == 'xgb' else reg_opt().set_params(**params_opt[method])
+            if method == 'xgb' else reg_opt(loss='exponential').set_params(**params_opt[method]) \
+            if method == 'ada' else reg_opt().set_params(**params_opt[method])
 
         # CV score
         scorer_ens_opt = make_scorer(rmse_scorer)
@@ -247,7 +248,8 @@ class RegressionHyperParamOpt:
             params_init = self.reg_opt().get_params()
 
             # Fit initial model
-            reg_de = self.reg_opt(objective="reg:squarederror") if self.method == 'xgb' else self.reg_opt()
+            reg_de = self.reg_opt(objective="reg:squarederror") if self.method == 'xgb'\
+                else self.reg_opt(loss='exponential') if self.method == 'ada' else self.reg_opt()
             reg_de.fit(self.x_train_opt, self.y_train_opt)
 
             # Initial predictions

@@ -37,6 +37,7 @@ Input arguments:
 
 """
 
+# TODO: Add assertions of the arguments
 # Show usage if no arguments are passed to the file and define variables from the input arguments
 max_iter, count, proc_i, method, opt_prompt = (int(argv[1]), int(argv[2]), int(argv[3]), str(argv[4]), str(argv[5])) \
     if len(argv) > 1 else exit('Usage: python main.py max_iter count proc_i method opt_prompt n_splits')
@@ -121,7 +122,7 @@ else:
     reg_params_list = [{'n_estimators': 497, 'learning_rate': 0.23, 'max_depth': 2},
                        {'n_estimators': 485, 'learning_rate': 0.23, 'max_depth': 2}, {'n_components': 3},
                        {'n_estimators': 150, 'max_depth': 15, 'min_samples_leaf': 1},
-                       {'n_estimators': 676, 'learning_rate': 0.1284015}]
+                       {'n_estimators': 676, 'learning_rate': 0.1284015, 'loss': 'exponential'}]  # Testicle
 
     # Default parameter conditionals
     reg_params = reg_params_list[0] if method == 'xgb' else reg_params_list[1] if method == 'gbr' \
