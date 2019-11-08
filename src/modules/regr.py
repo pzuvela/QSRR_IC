@@ -287,9 +287,9 @@ class RegressionHyperParamOpt:
                 self.params_final[self.method][key] = self.params_ftypes[self.method][key](final_values.x[fin_counter])
                 fin_counter += 1
 
-            params_final = self.params_final[self.method]  # Bug fix
+            self.params_final = self.params_final[self.method]  # Bug fix
 
-            reg_de.set_params(**params_final).fit(self.x_train_opt, self.y_train_opt)  # Bug fix
+            reg_de.set_params(**self.params_final).fit(self.x_train_opt, self.y_train_opt)  # Bug fix
 
             # Final Params
             y_hat_train_final = reg_de.predict(self.x_train_opt)
@@ -305,7 +305,7 @@ class RegressionHyperParamOpt:
                             '    Final RMSEP: {:.2f}\n' \
                             '    Optimisation Duration: {}\n' \
                             '    ---------------------------------------------------------------' \
-                            .format(params_final,
+                            .format(self.params_final,
                                     final_values.fun,
                                     rmse_train_final,
                                     rmse_test_final,
