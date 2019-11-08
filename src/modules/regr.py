@@ -368,7 +368,7 @@ class RegressionHyperParamOpt:
 
         else:
 
-            raise ValueError('# Please enter either ''pls'',''ada'',''rfr'', ''xgb'', or ''gbr''')
+            raise ValueError('# Please enter either ''xgb'', ''gbr'', ''ada'', ''rfr, or ''pls'' !')
 
         with open(self.results_dir + '2019-QSRR_IC_PartIV-{}_{}_opt_run_{}.txt'.format(
                 self.datetime.now().strftime('%d_%m_%Y-%H_%M'), self.method, self.count), "w") as text_file:
