@@ -22,7 +22,7 @@ from datetime import datetime
 from glob import glob
 
 # Input arguments
-method, max_iter = exit('Usage: python proc_results.py method max_iter') if not len(argv) > 1 else \
+method, max_iter = exit('Usage: python proc_results.py method') if not len(argv) > 1 else \
     (str(argv[1]), int(argv[2]))
 
 # Directories
@@ -45,28 +45,32 @@ logk_iso_exp = raw_data[['logk']].values.ravel()
 # Gradient retention times
 tg_exp = genfromtxt(data_dir + 'tg_data.csv', delimiter=',')
 
+# Merge isocratic QSRR model errors and add C.I.
+merge_files(results_dir+'*{}_errors_iso*'.format(method), tr_exp=None).to_csv(
+    merged_results_dir + '2019-QSRR_IC_PartIV-{}_{}_errors_iso_merged.csv'
+    .format(datetime.now().strftime('%d_%m_%Y-%H_%M'), method), header=True)
+
+# Merge experimental isocratic logk values with predicted ones and add C.I.
+merge_files(results_dir+'*{}_logk_iso*'.format(method), tr_exp=logk_iso_exp).to_csv(
+    merged_results_dir + '2019-QSRR_IC_PartIV-{}_{}_logk_iso_merged.csv'
+    .format(datetime.now().strftime('%d_%m_%Y-%H_%M'), method), header=True)
+
+# Merge gradient QSRR model errors and add C.I.
+merge_files(results_dir+'*{}_errors_grad*'.format(method)).to_csv(
+    merged_results_dir + '2019-QSRR_IC_PartIV-{}_{}_errors_grad_merged.csv'
+    .format(datetime.now().strftime('%d_%m_%Y-%H_%M'), method), header=True)
+
+# Merge experimental gradient tR values with predicted ones and add C.I.
+merge_files(results_dir+'*{}_tR_grad*{}_iters_run*'.format(method, max_iter), tr_exp=tg_exp).to_csv(
+    merged_results_dir + '2019-QSRR_IC_PartIV-{}_{}_tR_grad_merged.csv'
+    .format(datetime.now().strftime('%d_%m_%Y-%H_%M'), method), header=True)
+
+"""
+---------- Deprecated code
 # Lengths
 iso_err_len = len(glob(results_dir+'*{}_errors_iso*{}_iters_run*'.format(method, max_iter)))
 iso_logk_len = len(glob(results_dir+'*{}_logk_iso*{}_iters_run*'.format(method, max_iter)))
 grad_err_len = len(glob(results_dir+'*{}_errors_grad_{}_iters_run*'.format(method, max_iter)))
 grad_tR_len = len(glob(results_dir+'*{}_tR_grad*{}_iters_run*'.format(method, max_iter)))
-
-# Merge isocratic QSRR model errors and add C.I.
-merge_files(results_dir+'*{}_errors_iso*{}_iters_run*'.format(method, max_iter), tr_exp=None).to_csv(
-    merged_results_dir + '2019-QSRR_IC_PartIV-{}_{}_errors_iso_{}_iters_merged.csv'
-    .format(datetime.now().strftime('%d_%m_%Y-%H_%M'), method, max_iter * iso_err_len), header=True)
-
-# Merge experimental isocratic logk values with predicted ones and add C.I.
-merge_files(results_dir+'*{}_logk_iso*{}_iters_run*'.format(method, max_iter), tr_exp=logk_iso_exp).to_csv(
-    merged_results_dir + '2019-QSRR_IC_PartIV-{}_{}_logk_iso_{}_iters_merged.csv'
-    .format(datetime.now().strftime('%d_%m_%Y-%H_%M'), method, max_iter * iso_logk_len), header=True)
-
-# Merge gradient QSRR model errors and add C.I.
-merge_files(results_dir+'*{}_errors_grad_{}_iters_run*'.format(method, max_iter)).to_csv(
-    merged_results_dir + '2019-QSRR_IC_PartIV-{}_{}_errors_grad_{}_iters_merged.csv'
-    .format(datetime.now().strftime('%d_%m_%Y-%H_%M'), method, max_iter * grad_err_len), header=True)
-
-# Merge experimental gradient tR values with predicted ones and add C.I.
-merge_files(results_dir+'*{}_tR_grad*{}_iters_run*'.format(method, max_iter), tr_exp=tg_exp).to_csv(
-    merged_results_dir + '2019-QSRR_IC_PartIV-{}_{}_tR_grad_{}_iters_merged.csv'
-    .format(datetime.now().strftime('%d_%m_%Y-%H_%M'), method, max_iter * grad_tR_len), header=True)
+---------- Deprecated code
+"""
