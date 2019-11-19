@@ -58,10 +58,10 @@ class RegressorsQSRR:
         # Regression parameters
         self.reg_params = reg_params
 
-        # Predictions & model
-        self.y_hat_train, self.y_hat_test, self.model = self.array([]), self.array([]), object
-        self.mre_train, self.rmsre_train, self.rmse_train = self.array([]), self.array([]), self.array([])
-        self.mre_test, self.rmsre_test, self.rmse_test = self.array([]), self.array([]), self.array([])
+        # Predictions, model & stats
+        self.y_hat_train, self.y_hat_test, self.mre_train, self.rmsre_train, self.rmse_train, self.mre_test, \
+            self.rmsre_test, self.rmse_test, self.r2_all = [self.array([])] * 9
+        self.model = object
 
     def regress(self):
 
@@ -82,6 +82,32 @@ class RegressorsQSRR:
         self.model = model
 
         return self
+
+    def perc_var(self):
+
+        # Assert that the model is PLS
+        assert self.model_str == 'pls', '# To run this function the model has to be PLS !'
+
+        # Import numpy modules
+        var, divide, dot, hstack, subtract = [getattr(import_module('numpy'), i) for i in ['var', 'divide', 'dot',
+                                                                                           'hstack', 'subtract']]
+        is_fitted = getattr(import_module('sklearn.utils.validation'), 'check_is_fitted')
+        r_sq = getattr(import_module('sklearn.metrics'), 'r2_score')
+
+        # Is the PLS model fitted?
+        is_fitted(self.model, 'coef_', '# FATAL ERROR: The PLS model has not been fitted !')
+
+        # Total variance in X(train) X(train)-scores
+        tot_var_x, tot_var_t = [var(i, axis=0) for i in [self.x_train, self.model.x_scores_]]
+
+        # Percentage of explained variance in X-space
+        r2_x = 1 - divide(tot_var_t, tot_var_x.sum())
+        r2_y = r_sq(self.y_train, self.model.predict(self.x_train))
+        self.r2_all = hstack((r2_x[-1:], r2_y))
+
+        return self
+
+
 
     @staticmethod
     def get_errors(y, y_hat):
@@ -139,7 +165,8 @@ class RegressionHyperParamOpt:
             y_test_opt
 
         # Fixed attributes
-        self.n_splits, self.proc_i, self.results_dir, self.count = n_splits, proc_i, results_dir, count
+        self.n_splits, self.proc_i, self.results_dir, self.count, self.opt_res = n_splits, proc_i, results_dir, \
+            count, ()
 
         """
         
@@ -331,14 +358,15 @@ class RegressionHyperParamOpt:
                 kf = self.KFold(n_splits=self.n_splits)
 
                 # Initiate cross validation (CV) model
-                self.reg_opt().set_params(n_components=i)
-                self.reg_opt().fit(self.x_train_opt, self.y_train_opt)
+                reg_opt = self.reg_opt()
+                reg_opt.set_params(n_components=i)
+                reg_opt.fit(self.x_train_opt, self.y_train_opt)
 
                 # Pre-loading variables
                 j = 0
                 # Construct Scoring Object
                 scorer_pls_opt = self.make_scorer(rmse_scorer, greater_is_better=False)
-                rmse_test = self.cross_val_score(self.reg_opt(), self.x_train_opt, self.y_train_opt,
+                rmse_test = self.cross_val_score(reg_opt, self.x_train_opt, self.y_train_opt,
                                                  cv=self.KFold(n_splits=self.n_splits), scoring=scorer_pls_opt)
                 for train_i, test_i in kf.split(self.x_train_opt, self.y_train_opt):
                     # Defining the training set
@@ -348,7 +376,7 @@ class RegressionHyperParamOpt:
                     x_test_cv = self.x_train_opt[test_i]
                     y_test_cv = self.y_train_opt[test_i]
                     # Build PLS Model
-                    reg_cv = self.reg_opt().fit(x_train_cv, y_train_cv)
+                    reg_cv = reg_opt.fit(x_train_cv, y_train_cv)
                     # Generating RMSE
                     y_test_hat_cv = reg_cv.predict(x_test_cv).ravel()
                     rmse_test[j] = rmse_scorer(y_test_cv, y_test_hat_cv)
@@ -358,6 +386,7 @@ class RegressionHyperParamOpt:
                 nlvs[i - 1] = i
                 rmsecv[i - 1] = self.mean(rmse_test)
             lvs = self.knee(nlvs, rmsecv)
+
             toprint_final = '    Optimised n(LVs): {} \n' \
                             '    RMSECV: {:.3f} \n' \
                             '    ------------ Completion of Optimisation ----------- \n'.format(lvs, rmsecv[lvs - 1])
@@ -365,6 +394,7 @@ class RegressionHyperParamOpt:
             print(toprint_final)
 
             self.params_final = {'n_components': lvs}
+            self.opt_res = (nlvs, rmsecv)
 
         else:
 
