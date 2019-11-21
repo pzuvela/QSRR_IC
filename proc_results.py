@@ -3,11 +3,10 @@
 Processing results of parallel runs of main.py
 
 Input arguments:
-1) method   : xgb, gbr, pls
-2) max_iter : number of iterations
+1) method : xgb, gbr, ada, rfr, pls
 
 Usage:
-python proc_results.py method max_iter
+python proc_results.py method
 
 """
 
@@ -62,6 +61,11 @@ merge_files(results_dir+'*{}_errors_grad*'.format(method)).to_csv(
 merge_files(results_dir+'*{}_tR_grad*'.format(method), tr_exp=tg_exp).to_csv(
     merged_results_dir + '2019-QSRR_IC_PartIV-{}_{}_tR_grad_merged.csv'
     .format(datetime.now().strftime('%d_%m_%Y-%H_%M'), method), header=True)
+
+# If PLS then merge R2X and R2Y
+merge_files(results_dir+'*{}_iso_perc_var*'.format(method), tr_exp=None).to_csv(
+    merged_results_dir + '2019-QSRR_IC_PartIV-{}_{}_perc_var_merged.csv'
+    .format(datetime.now().strftime('%d_%m_%Y-%H_%M'), method), header=True) if method == 'pls' else None
 
 """
 ---------- Deprecated code
