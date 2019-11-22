@@ -1,4 +1,4 @@
-from numpy import sqrt, square, argmax, sort, vstack, transpose, mean, sum
+from numpy import sqrt, square, argmax, sort, vstack, transpose
 from pandas import DataFrame, concat, read_csv
 from glob import glob
 

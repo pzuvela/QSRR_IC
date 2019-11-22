@@ -23,7 +23,7 @@ from numpy import genfromtxt
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from multiprocessing import Pool
-from src.modules.iso2grad import ig_model as ig
+from src.modules.modelling.iso2grad import ig_model as ig
 
 """ Fixed variables 
 
@@ -108,7 +108,7 @@ if opt_prompt == 'yes':
     x_data_opt = DataFrame(sc_opt.transform(x_data), columns=x_data.columns).values
 
     # Import the optimization function from the "regr" module
-    from src.modules.regr import RegressionHyperParamOpt
+    from src.modules.modelling.regr import RegressionHyperParamOpt
 
     # Optimization of (hyper-)parameters
     RegressionHyperParamOpt = RegressionHyperParamOpt(method, x_train_opt, y_train_opt, x_test_opt, y_test_opt,
@@ -158,7 +158,7 @@ def model_parallel(arg_iter):
     x_data_par = DataFrame(sc_par.transform(x_data), columns=x_data.columns).values
 
     # Import the RegressorsQSRR class
-    from src.modules.regr import RegressorsQSRR
+    from src.modules.modelling.regr import RegressorsQSRR
 
     # Instantiate the RegressorsQSRR class with data and run the regress() method
     reg = RegressorsQSRR(method, [x_train_par, x_test_par, y_train_par, y_test_par], reg_params).regress()

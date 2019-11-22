@@ -14,14 +14,14 @@ References:
         (doi:10.1016/j.aca.2014.12.056)
 """
 
-# TODO: Parallelize the code
 # TODO: Comment the code
 # TODO: Add histogram & bar plotting
 
 
 # Import numpy packages
-from numpy import mean, size, ndarray, argsort, argwhere, arange, multiply, zeros
-from numpy.random import permutation 
+from numpy import mean, size, ndarray, argsort, argwhere, arange, multiply, zeros, array, hstack, append
+from numpy.random import permutation
+from itertools import permutations as perms
 
 
 class SumOfRankingDiffs:
@@ -35,6 +35,7 @@ class SumOfRankingDiffs:
         # Define size of A
         self.nrows, self.ncols = size(self.A, axis=0), size(self.A, axis=1)
 
+        # Define srd (raw), srd (normalized), maximum srd, srd (random), srd (random, normalized)
         self.srd, self.srd_norm, self.srd_max, self.srd_rnd, self.srd_rnd_norm = [ndarray([])] * 5
 
     def compute_srd(self):
@@ -76,27 +77,50 @@ class SumOfRankingDiffs:
         return self
 
     @staticmethod
-    def _srd_normalize_val(srd_vals, srd_max):
+    def _srd_val_normalize(srd_vals, srd_max):
         return multiply(srd_vals, 100 / srd_max)
 
+    @staticmethod
+    def _srd_val_restrict(nrows, exact, exact_lim=10, n_rnd_vals=10000):
+
+        """
+        :param nrows: int
+        :param exact: bool
+        :param exact_lim: int
+        :param n_rnd_vals: int
+        :return: exact, exact_lim, n_rnd_vals
+        """
+
+        # Restrict the calculation of true SRD distribution if nrows > exact_lim (default 10)
+        exact = False if nrows > exact_lim else exact
+        exact_lim, n_rnd_vals = (int(exact_lim), 0) if exact else (0, int(n_rnd_vals))
+
+        return exact, exact_lim, n_rnd_vals
+
     # SRD validation using the distribution of SRD values of normally-distributed random numbers
-    def srd_validate(self, n_rnd_vals=10000):
+    def srd_validate(self, exact=False, **kwargs):
+
+        """
+        :param exact: bool
+        :return: self
+        """
 
         # Assertion to make sure that SRD is ran before validation !
         assert self.srd.size > 0, '# You must run the SRD method before validation !'
+        # Assertion to make sure that exact is a boolean !
+        assert not isinstance(exact, bool), '# The argument \"exact\" has to be a boolean !'
+
+        # Input arguments
+        exact, exact_lim, n_rnd_vals = self._srd_val_restrict(self.nrows, exact, **kwargs)
 
         # Ideal ranking
         ideal_rank = arange(self.nrows).reshape(-1, 1)
 
-        # Predefine "srd_rnd" and "srd_norm"
-        srd_rnd, srd_rnd_norm = [zeros((n_rnd_vals, 1))] * 2
-
         # Compute SRD values for "n_rand_vals" random numbers
-        for i in arange(n_rnd_vals):
-
-            rnd_order = permutation(self.nrows).reshape(-1, 1)
-            srd_rnd[i] = sum(abs(rnd_order - ideal_rank))
-            srd_rnd_norm[i] = self._srd_normalize_val(srd_vals=srd_rnd[i], srd_max=self._srd_max().srd_max)
+        rnd_order = hstack([permutation(self.nrows).reshape(-1, 1) for _ in range(n_rnd_vals)]) if not exact else \
+            array(list(perms(range(self.nrows)))).T
+        srd_rnd = sum(abs(rnd_order - ideal_rank))
+        srd_rnd_norm = self._srd_val_normalize(srd_vals=srd_rnd, srd_max=self._srd_max().srd_max)
 
         self.srd_rnd, self.srd_rnd_norm = srd_rnd, srd_rnd_norm
 

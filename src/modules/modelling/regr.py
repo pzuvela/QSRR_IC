@@ -24,7 +24,7 @@ from importlib import import_module
 from sklearn.metrics import make_scorer
 from sklearn.model_selection import KFold, cross_val_score
 from numpy import mean
-from src.modules.func import rmse_scorer
+from src.modules.support.func import rmse_scorer
 
 
 class RegressorsQSRR:

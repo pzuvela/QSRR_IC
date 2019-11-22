@@ -5,8 +5,8 @@ from glob import glob
 from datetime import datetime
 from numpy import genfromtxt, ndarray
 from pandas import DataFrame
-from src.modules.srd import SumOfRankingDiffs
-from src.modules.func import add_true_mean_std
+from src.modules.modelling.srd import SumOfRankingDiffs
+from src.modules.support.func import add_true_mean_std
 
 # Input arguments
 method, y_var = exit('Usage: python srd_main.py method y_var n_rnd_vals') if not len(argv) > 1 else \
@@ -43,7 +43,8 @@ srd.srd_normalize()
 
 # Validate SRDs
 print('# Validating SRDs with {} random numbers. Please wait...'.format(10000 if not n_rnd_vals else n_rnd_vals))
-srd.srd_validate() if not n_rnd_vals else srd.srd_validate(n_rnd_vals=n_rnd_vals)
+srd.srd_validate() if not n_rnd_vals else srd.srd_validate(exact=False, n_rnd_vals=(
+    10000 if not n_rnd_vals else n_rnd_vals))
 
 # Export files
 add_true_mean_std(None, DataFrame(srd.srd_norm)).to_csv(

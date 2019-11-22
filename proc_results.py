@@ -16,7 +16,7 @@ from os import getcwd, makedirs
 from os.path import exists
 from numpy import genfromtxt
 from pandas import read_csv
-from src.modules.func import merge_files
+from src.modules.support.func import merge_files
 from datetime import datetime
 
 # Input arguments
