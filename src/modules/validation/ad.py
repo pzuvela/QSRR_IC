@@ -93,7 +93,6 @@ def resids(y1, y1_hat, y2, y2_hat):
     res1 = y1_hat - y1
     res2 = y2_hat - y2
     s1 = np.std(res1)  # Standard deviation of training residuals
-    # s2 = np.std(res2)  # Standard deviation of testing residuals
     resid1 = np.divide(res1, s1)
     resid2 = np.divide(res2, s1)
 

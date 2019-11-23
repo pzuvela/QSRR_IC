@@ -23,7 +23,7 @@ from numpy import genfromtxt
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from multiprocessing import Pool
-from src.modules.iso2grad import ig_model as ig
+from src.modules.modelling.iso2grad import ig_model as ig
 
 """ Fixed variables 
 
@@ -46,7 +46,7 @@ n_splits = int(argv[6]) if opt_prompt == "yes" else []
 
 # Make sure that method is 'xgb', 'gbr', 'pls', 'rfr', or 'ada'
 assert method in ['xgb', 'gbr', 'pls', 'rfr', 'ada'], \
-    '# Please enter either ''xgb'', ''gbr'', ''ada'', ''rfr, or ''pls'' !'
+    '# Please enter either \'xgb\', \'gbr'', \'ada\', \'rfr\', or \'pls\' !'
 
 # Directories
 curr_dir = getcwd()
@@ -109,7 +109,7 @@ if opt_prompt == 'yes':
     x_data_opt = DataFrame(sc_opt.transform(x_data), columns=x_data.columns).values
 
     # Import the optimization function from the "regr" module
-    from src.modules.regr import RegressionHyperParamOpt
+    from src.modules.modelling.regr import RegressionHyperParamOpt
 
     # Optimization of (hyper-)parameters
     RegressionHyperParamOpt = RegressionHyperParamOpt(method, x_train_opt, y_train_opt, x_test_opt, y_test_opt,
@@ -120,7 +120,7 @@ else:
 
     # List of optimized parameters (updated with new optimized values for ADA & RFR)
     reg_params_list = [{'n_estimators': 497, 'learning_rate': 0.23, 'max_depth': 2},
-                       {'n_estimators': 485, 'learning_rate': 0.23, 'max_depth': 2}, {'n_components': 3},
+                       {'n_estimators': 485, 'learning_rate': 0.23, 'max_depth': 2}, {'n_components': 4},
                        {'n_estimators': 150, 'max_depth': 15, 'min_samples_leaf': 1},
                        {'n_estimators': 676, 'learning_rate': 0.1284015, 'loss': 'exponential'}]  # Testicle
 
@@ -159,10 +159,13 @@ def model_parallel(arg_iter):
     x_data_par = DataFrame(sc_par.transform(x_data), columns=x_data.columns).values
 
     # Import the RegressorsQSRR class
-    from src.modules.regr import RegressorsQSRR
+    from src.modules.modelling.regr import RegressorsQSRR
 
     # Instantiate the RegressorsQSRR class with data and run the regress() method
     reg = RegressorsQSRR(method, [x_train_par, x_test_par, y_train_par, y_test_par], reg_params).regress()
+
+    # Print percentage of explained variance if model is PLS
+    cum_r2_i = reg.perc_var().r2_all if method == 'pls' else None
 
     # Predict y-values using the model
     y_data_hat_par = reg.model.predict(x_data_par).ravel()
@@ -182,7 +185,7 @@ def model_parallel(arg_iter):
     # Flush the output buffer // fix the logging issues
     stdout.flush()
 
-    return reg.rmse_train, reg.rmse_test, y_data, y_data_hat_par, rmse_grad_par, tg_exp, tg_total
+    return reg.rmse_train, reg.rmse_test, y_data, y_data_hat_par, rmse_grad_par, tg_exp, tg_total, cum_r2_i
 
 
 # Main section
@@ -204,6 +207,9 @@ if __name__ == '__main__':
     y_true, y_pred, tg_true, tg_pred = models_final[0][2], [models_final[i][3] for i in range(max_iter)], \
         models_final[0][5], [models_final[i][6] for i in range(max_iter)]
 
+    # Percentage of cumulative explained variance for PLS
+    cum_r2_all = [models_final[i][7] for i in range(max_iter)] if method == 'pls' else None
+
     # Save the distribution of isocratic retention time errors
     DataFrame(rmse_iso, columns=['rmsre_train', 'rmsre_test']).to_csv(results_dir + '2019-QSRR_IC_PartIV-{}_{}_errors_'
                                                                                     'iso_{}_iters_run_{}.csv'.
@@ -222,6 +228,12 @@ if __name__ == '__main__':
     # Save predicted gradient retention times
     DataFrame(tg_pred).to_csv(results_dir + '2019-QSRR_IC_PartIV-{}_{}_tR_grad_{}_iters_run_{}.csv'
                               .format(datetime.now().strftime('%d_%m_%Y-%H_%M'), method, max_iter, count), header=True)
+
+    # Save percentage of cumulative explained variance for PLS
+    DataFrame(cum_r2_all, columns=['R2X', 'R2Y']).to_csv(
+        results_dir + '2019-QSRR_IC_PartIV-{}_{}_iso_perc_var_{}_iters_run_{}.csv'.format(
+            datetime.now().strftime('%d_%m_%Y-%H_%M'), method, max_iter, count), header=True) if method == 'pls' \
+        else None
 
     # Compute and display run-time
     run_time = time() - start_time
