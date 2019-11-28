@@ -2,6 +2,10 @@
 Sum of ranking differences analysis
 Validated by comparison of ranks with random numbers (CRNN)
 
+Requirements:
+    1) NumPy
+    2) SciPy
+
 References:
     1) Heberger, K. Sum of ranking differences compares methods or models fairly. TRAC 2010, 29, 101-109.
         (doi:10.1016/j.trac.2009.09.009)
@@ -16,21 +20,40 @@ References:
 
 # TODO: Comment the code
 # TODO: Add histogram & bar plotting
+# TODO: Add cross-validation
 
 
-# Import numpy packages
-from numpy import mean, size, ndarray, argsort, argwhere, arange, multiply, zeros, array, hstack, append
+# Import stuff from numpy, scipy & itertools packages
+from numpy import min as np_min
+from numpy import max as np_max
+from numpy import mean, median, size, ndarray, argsort, argwhere, arange, multiply, zeros, array, hstack
+from scipy.stats import mode
 from numpy.random import permutation
 from itertools import permutations as perms
 
 
 class SumOfRankingDiffs:
 
-    def __init__(self, a, t=None):
+    def __init__(self, a, t='mean'):
 
-        # Define input matrix & target
+        """
+        :param a: ndarray
+        :param t: ndarray, string (default, 'mean')
+        """
+
+        # Define input matrix
         self.A = a  # Matrix A [columns: models, methods; rows: samples]
-        self.T = mean(a, axis=0) if t is None else t  # Target T [default: average]
+
+        """ Define targets """
+        # Dictionary of "gold standards"
+        self.gold_std_dict = {'mean': mean, 'median': median, 'mode': mode, 'min': np_min, 'max': np_max}
+
+        # If target is a string, apply the function/attribute from the dictionary; else: use the input t as is
+        if isinstance(t, str):
+            self.T = self.gold_std_dict[t](a, axis=0)  # Target T [default: mean of A]
+        else:
+            assert isinstance(t, ndarray), '# If target is not a string or None, it must be an ndarray !'
+            self.T = t
 
         # Define size of A
         self.nrows, self.ncols = size(self.A, axis=0), size(self.A, axis=1)
@@ -78,6 +101,11 @@ class SumOfRankingDiffs:
 
     @staticmethod
     def _srd_val_normalize(srd_vals, srd_max):
+        """
+        :param srd_vals: ndarray
+        :param srd_max: int
+        :return: ndarray
+        """
         return multiply(srd_vals, 100 / srd_max)
 
     @staticmethod
@@ -108,7 +136,7 @@ class SumOfRankingDiffs:
         # Assertion to make sure that SRD is ran before validation !
         assert self.srd.size > 0, '# You must run the SRD method before validation !'
         # Assertion to make sure that exact is a boolean !
-        assert not isinstance(exact, bool), '# The argument \"exact\" has to be a boolean !'
+        assert isinstance(exact, bool), '# The argument \"exact\" has to be a boolean !'  # Bug fix
 
         # Input arguments
         exact, exact_lim, n_rnd_vals = self._srd_val_restrict(self.nrows, exact, **kwargs)
