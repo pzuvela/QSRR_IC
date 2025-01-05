@@ -23,7 +23,7 @@ from numpy import genfromtxt
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from multiprocessing import Pool
-from src.modules.modelling.iso2grad import ig_model as ig
+from qsrr_ic.models.iso2grad import ig_model as ig
 
 """ Fixed variables 
 
