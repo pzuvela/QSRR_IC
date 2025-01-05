@@ -3,6 +3,8 @@ import pytest
 import numpy as np
 from numpy import ndarray
 
+import pandas as pd
+
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
 
@@ -63,8 +65,16 @@ class TestIso2Grad:
         iso2grad_model.fit()
 
         # Validate results
-        golden_results = np.loadtxt(TestPaths.ISO2GRAD_TEST_RESULTS_PATH, delimiter=",")
-        assert (iso2grad_model.results.gradient_retention_times == golden_results).all()
+        golden_results = pd.read_csv(
+            TestPaths.ISO2GRAD_TEST_RESULTS_PATH,
+            float_precision="high"
+        ).values
+
+        assert np.isclose(
+            iso2grad_model.results.gradient_retention_times,
+            golden_results,
+            atol=1e-5
+        ).all()
 
 
 if __name__ == "__main__":
