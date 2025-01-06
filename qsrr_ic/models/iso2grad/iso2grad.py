@@ -1,14 +1,3 @@
-"""
-
-ISO2GRAD model v1
-
-Function to predict gradient retention times from an isocratic model
-
-Reference: Bolanca, T. et al. Development of an ion chromatographic gradient retention model from isocratic elution
-           experiments. J. Chromatogr. A 2006, 1121, 228-235. (doi:10.1016/j.chroma.2006.04.036)
-
-"""
-
 from typing import (
     Any,
     Optional
@@ -30,7 +19,6 @@ from qsrr_ic.models.iso2grad.domain_models import (
 
 
 class Iso2Grad:
-
     def __init__(
         self,
         qsrr_model: Any,
@@ -38,9 +26,7 @@ class Iso2Grad:
         iso2grad_data: Iso2GradData,
         iso2grad_settings: Iso2GradSettings
     ):
-
         """
-
         Class to fit the Iso2Grad model
 
         Parameters
@@ -50,12 +36,10 @@ class Iso2Grad:
         iso2grad_data: Iso2GradData, data for fitting the iso2grad model
         iso2grad_settings: Iso2GradSettings, settings for fitting the iso2grad model
         """
-
         self.qsrr_model = qsrr_model
         self.scaler = scaler
         self.iso2grad_data = iso2grad_data
         self.iso2grad_settings = iso2grad_settings
-
         self.results: Optional[Iso2GradResults] = None
 
     def _predict_k(self, concentration: float, predictors: ndarray) -> float:
@@ -76,94 +60,142 @@ class Iso2Grad:
         log_k = self.qsrr_model.predict(scaled_input)
         return 10 ** log_k
 
-    def _fit(self, profile_idx: int):
+    @staticmethod
+    def _calculate_concentrations(tg1: float, tg2: float, ti1: float, conc1: float, slope: float, ti2: float, conc2: float) -> tuple:
+        """
+        Calculate the gradient concentrations for the two retention times.
 
-        n_profiles, n_analytes = self.iso2grad_data.gradient_void_times.shape
+        Parameters
+        ----------
+        tg1, tg2: float, Retention times for the two gradient steps.
+        ti1, ti2: float, Gradient segment start and end times.
+        conc1, conc2: float, Gradient concentrations at the start and end times.
+        slope: float, Slope of the gradient.
+
+        Returns
+        -------
+        tuple, Calculated concentrations at tg1 and tg2.
+        """
+        if tg2 < ti2:
+            conc_grad1 = slope * (tg1 - ti1) + conc1
+            conc_grad2 = slope * (tg2 - ti1) + conc1
+        else:
+            conc_grad1 = slope * (tg1 - ti1) + conc1
+            conc_grad2 = conc2
+        return conc_grad1, conc_grad2
+
+    def _calculate_average_k(self, conc_grad1: float, conc_grad2: float, analyte_idx: int) -> float:
+        """
+        Calculate the average retention factor (k) between two concentrations.
+
+        Parameters
+        ----------
+        conc_grad1, conc_grad2: float, The two gradient concentrations.
+        analyte_idx: int, Index of the analyte.
+
+        Returns
+        -------
+        float, Average retention factor (k).
+        """
+        analyte_predictors = self.iso2grad_data.isocratic_model_predictors[analyte_idx]
+        k1 = self._predict_k(concentration=conc_grad1, predictors=analyte_predictors)
+        k2 = self._predict_k(concentration=conc_grad2, predictors=analyte_predictors)
+        return (k2 + k1) / 2
+
+    @staticmethod
+    def _integrate_retention_time(tg1: float, tg2: float, k_avg: float, i_prev: float) -> float:
+        """
+        Integrate retention time for a given time step.
+
+        Parameters
+        ----------
+        tg1, tg2: float, Retention times for the current gradient segment.
+        k_avg: float, Average retention factor (k).
+        i_prev: float, Previous integration step value.
+
+        Returns
+        -------
+        float, Updated integration value.
+        """
+        del_t_updt = tg2 - tg1
+        return i_prev + (del_t_updt / k_avg)
+
+    def _process_analyte(self, profile_idx: int, analyte_idx: int) -> float:
+        """
+        Process retention times for a single analyte.
+
+        Parameters
+        ----------
+        profile_idx: int, Index of the gradient profile.
+        analyte_idx: int, Index of the analyte.
+
+        Returns
+        -------
+        float, Retention time for the analyte.
+        """
         n_profile_cols = self.iso2grad_data.gradient_retention_profiles.shape[1]
+        i_prev = 0.0
+        tr_g = 0.0
 
-        tg1, tg2, i_prev, i_partial, k1_2 = np.zeros((5, 1))
-        tr_g = np.zeros(n_analytes)
+        # Loop through the gradient segments
+        for p in range(0, n_profile_cols - 2, 3):
+            ti1, conc1, slope = self.iso2grad_data.gradient_retention_profiles[profile_idx, p:p+3]
+            ti2, conc2 = self.iso2grad_data.gradient_retention_profiles[profile_idx, p+3:p+5]
 
-        # Loop through the analytes
-        for b in range(n_analytes):
+            for tg in np.arange(ti1, ti2, self.iso2grad_settings.integration_step):
+                tg1, tg2 = tg, tg + self.iso2grad_settings.integration_step
 
-            # Initialize next integration step
-            i_next = 0
+                # Calculate gradient concentrations at tg1 and tg2
+                conc_grad1, conc_grad2 = self._calculate_concentrations(tg1, tg2, ti1, conc1, slope, ti2, conc2)
 
-            # Loop through the gradient segments
-            for p in range(0, n_profile_cols - 2, 3):
+                # Calculate the average retention factor (k)
+                k_avg = self._calculate_average_k(conc_grad1, conc_grad2, analyte_idx)
 
-                # First segment of the gradient
-                ti1 = self.iso2grad_data.gradient_retention_profiles[profile_idx, p]
-                conc1 = self.iso2grad_data.gradient_retention_profiles[profile_idx, p + 1]
-                slope = self.iso2grad_data.gradient_retention_profiles[profile_idx, p + 2]
+                # Integrate retention time
+                i_next = self._integrate_retention_time(tg1, tg2, k_avg, i_prev)
 
-                # Second segment of the gradient
-                ti2 = self.iso2grad_data.gradient_retention_profiles[profile_idx, p + 3]
-                conc2 = self.iso2grad_data.gradient_retention_profiles[profile_idx, p + 4]
-
-                # Loop through the retention times
-                for tg in np.arange(ti1, ti2, self.iso2grad_settings.integration_step):
-
-                    tg1 = tg
-                    tg2 = tg1 + self.iso2grad_settings.integration_step
-
-                    if tg2 < ti2:
-
-                        conc_grad1 = slope * (tg1 - ti1) + conc1
-                        conc_grad2 = slope * (tg2 - ti1) + conc1
-
-                        # Update the integration step
-                        del_t_updt = self.iso2grad_settings.integration_step
-
-                    else:
-
-                        conc_grad1 = slope * (tg1 - ti1) + conc1
-                        conc_grad2 = conc2
-
-                        # Update the integration step
-                        del_t_updt = ti2 - tg1
-
-                    # Re-define the next integration step as the previous one
-                    i_prev = i_next
-
-                    # Predict k from the machine learning model for the two gradient concentrations
-                    analyte_predictors = self.iso2grad_data.isocratic_model_predictors[b]
-                    k1 = self._predict_k(concentration=conc_grad1, predictors=analyte_predictors)
-                    k2 = self._predict_k(concentration=conc_grad2, predictors=analyte_predictors)
-
-                    # Average k between the two gradient concentrations
-                    k1_2 = (k2 + k1) / 2
-
-                    # Update integral
-                    i_partial = del_t_updt / k1_2
-                    i_next = i_prev + i_partial
-
-                    if i_prev < self.iso2grad_data.gradient_void_times[profile_idx, b] < i_next:
-                        break
-
-                if i_prev < self.iso2grad_data.gradient_void_times[profile_idx, b] < i_next:
+                # Check if the analyte passes the void time
+                if i_prev < self.iso2grad_data.gradient_void_times[profile_idx, analyte_idx] < i_next:
+                    tr_g = self.iso2grad_data.gradient_void_times[profile_idx, analyte_idx] + tg1 + \
+                           (self.iso2grad_data.gradient_void_times[profile_idx, analyte_idx] - i_prev) * k_avg
                     break
 
-            # Calculate retention time for a specified gradient
-            tr_g[b] = \
-                self.iso2grad_data.gradient_void_times[profile_idx, b] + tg1 \
-                + (self.iso2grad_data.gradient_void_times[profile_idx, b] - i_prev) * k1_2
+                i_prev = i_next
+
+            if tr_g != 0.0:
+                break
 
         return tr_g
 
+    def _fit_profile(self, profile_idx: int) -> np.ndarray:
+        """
+        Process and calculate retention times for all analytes in a profile.
+
+        Parameters
+        ----------
+        profile_idx: int, Index of the gradient profile.
+
+        Returns
+        -------
+        np.ndarray, Retention times for all analytes in the profile.
+        """
+        n_analytes = self.iso2grad_data.gradient_void_times.shape[1]
+        retention_times = np.zeros(n_analytes)
+
+        for analyte_idx in range(n_analytes):
+            retention_times[analyte_idx] = self._process_analyte(profile_idx, analyte_idx)
+
+        return retention_times
+
     def fit(self):
-
-        pool = Parallel(
-            n_jobs=self.iso2grad_settings.n_jobs,
-            verbose=self.iso2grad_settings.verbosity
-        )
-
+        """
+        Fit the Iso2Grad model in parallel and return gradient retention times.
+        """
+        pool = Parallel(n_jobs=self.iso2grad_settings.n_jobs, verbose=self.iso2grad_settings.verbosity)
         gradient_retention_times = pool(
-            delayed(self._fit)(profile_idx)
+            delayed(self._fit_profile)(profile_idx)
             for profile_idx in range(self.iso2grad_data.gradient_retention_profiles.shape[0])
         )
 
-        gradient_retention_times = np.vstack(gradient_retention_times)
-
-        self.results = Iso2GradResults(gradient_retention_times)
+        # Stack the results and store in results
+        self.results = Iso2GradResults(np.vstack(gradient_retention_times))
