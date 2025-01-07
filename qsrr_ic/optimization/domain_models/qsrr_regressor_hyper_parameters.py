@@ -116,6 +116,9 @@ class HyperParameterRegistry:
         for name, hp in self.__parameters.items():
             yield name, hp
 
+    def __len__(self):
+        return len(self.__parameters)
+
     def add(self, name: HyperParameterName, value: Union[HyperParameter, HyperParameterRange]) -> None:
         """
         Add a new HyperParameter or HyperParameterRange to the collection.

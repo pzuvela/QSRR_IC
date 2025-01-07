@@ -4,7 +4,10 @@ from typing import (
 )
 
 from qsrr_ic.models.qsrr.enums import RegressorType
-from qsrr_ic.optimization.domain_models import HyperParameterRegistry
+from qsrr_ic.optimization.domain_models import (
+    HyperParameter,
+    HyperParameterRegistry
+)
 from qsrr_ic.optimization.enums import CrossValidationType
 
 
@@ -52,6 +55,4 @@ class OptimizerSettings:
             cv_settings = CrossValidationSettings()
         self.cv_settings = cv_settings
 
-        if global_search_settings is None:
-            global_search_settings = GlobalSearchSettings()
         self.global_search_settings = global_search_settings

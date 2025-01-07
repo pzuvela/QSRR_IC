@@ -22,13 +22,19 @@ from sklearn.model_selection import (
 from qsrr_ic.metrics import Metrics
 from qsrr_ic.models.qsrr import QsrrModel
 from qsrr_ic.models.qsrr.domain_models import QsrrData
+from qsrr_ic.models.qsrr.enums import RegressorType
 from qsrr_ic.optimization.domain_models import (
     HyperParameter,
+    HyperParameterRange,
     HyperParameterRegistry,
     OptimizerSettings,
     OptimizerResults,
 )
-from qsrr_ic.optimization.enums import CrossValidationType
+from qsrr_ic.process.process_curve_data import ProcessCurveData
+from qsrr_ic.optimization.enums import (
+    CrossValidationType,
+    HyperParameterName
+)
 
 # Dictionary of hyper-parameter ranges
 self.params_ranges = {'xgb': ({'n_est_lb': 10, 'n_est_ub': 500, 'lr_lb': 0.1, 'lr_ub': 0.9,
@@ -62,7 +68,7 @@ class QsrrModelOptimizer:
         self.qsrr_train_data = qsrr_train_data
         self.qsrr_test_data = qsrr_test_data
 
-        self.optimal_hyper_parameters: HyperParameterRegistry = HyperParameterRegistry()
+        self.optimal_hyper_parameters: Optional[HyperParameterRegistry] = None
 
         cv_kwargs = {}
 
@@ -89,33 +95,80 @@ class QsrrModelOptimizer:
         }
         return HyperParameterRegistry.from_dict(hyper_parameters_dict)
 
-
-    def objective_function(self, hyper_parameters: ndarray[float]):
-
-        hyper_parameters = self.get_hyper_parameters_registry(hyper_parameters)
-
-        model = QsrrModel(
+    def get_model(self, hyper_parameters: HyperParameterRegistry) -> QsrrModel:
+        return QsrrModel(
             regressor_type=self.optimizer_settings.regressor_type,
             qsrr_train_data=self.qsrr_train_data,
             qsrr_test_data=self.qsrr_test_data,
             hyper_parameters=hyper_parameters
         )
 
-        # CV score
+    def cross_validate_model(self, qsrr_model: QsrrModel, greater_is_better: bool = True):
         score = cross_val_score(
-            model,
+            qsrr_model.model,
             self.qsrr_train_data.x,
             self.qsrr_train_data.y,
             cv=self.cv,
-            scoring=make_scorer(Metrics.rmse)
+            scoring=make_scorer(Metrics.rmse, greater_is_better=greater_is_better)
         )
-
         return np.mean(score)
+
+    def _objective_function(self, hyper_parameters: HyperParameterRegistry, greater_is_better: bool = True):
+        qsrr_model = self.get_model(hyper_parameters)
+        cv_score = self.cross_validate_model(qsrr_model, greater_is_better=greater_is_better)
+        return cv_score
+
+    def objective_function(self, hyper_parameters: ndarray[float]):
+        hyper_parameters = self.get_hyper_parameters_registry(hyper_parameters)
+        return self._objective_function(hyper_parameters)
+
+    def _optimize_using_de(self):
+        optimal_hyper_parameters = differential_evolution(
+            self.objective_function,
+            self.get_bounds(),
+            workers=self.optimizer_settings.global_search_settings.n_jobs,
+            updating='deferred',
+            mutation=self.optimizer_settings.global_search_settings.mutation_rate,
+            popsize=self.optimizer_settings.global_search_settings.population_size
+        )
+        self.optimal_hyper_parameters = self.get_hyper_parameters_registry(optimal_hyper_parameters.x)
+
+    def _optimize_using_knee(self):
+
+        if len(self.optimizer_settings.hyper_parameter_ranges) > 1:
+            raise ValueError(
+                "Only regressors with a single hyper-parameter can be optimized using knee point approach!"
+            )
+
+        name: HyperParameterName = self.optimizer_settings.hyper_parameter_ranges.names()[0]  # Only one parameter
+        hp_range: HyperParameterRange = self.optimizer_settings.hyper_parameter_ranges.get(name)
+
+        if hp_range.type() != int:
+            raise ValueError("Knee point approach is currently only supported for int HPs!")
+
+        min_: int = hp_range.lower.value
+        max_: int = hp_range.upper.value
+
+        x = []
+        errors = []
+
+        for value in range(min_, max_ + 1):
+            hyper_parameters = HyperParameterRegistry()
+            hyper_parameters.add(name, HyperParameter(value))
+            cv_score = self._objective_function(hyper_parameters, greater_is_better=False)
+            x.append(value)
+            errors.append(cv_score)
+
+        optimal_hp = ProcessCurveData.knee(np.array(x), np.array(errors))
+
+        self.optimal_hyper_parameters = HyperParameterRegistry()
+        self.optimal_hyper_parameters.add(name, HyperParameter(optimal_hp))
 
     def optimize(self):
 
-        # Ensemble learners
-        if self.method in self.params_opt.keys():
+        if self.optimizer_settings.regressor_type == RegressorType.PLS:
+            self._optimize_using_knee()
+        else:
 
             # QSRR Optimisation
             print('    ----------------- QSRR Optimisation ---------------')
@@ -148,14 +201,7 @@ class QsrrModelOptimizer:
 
 
 
-            final_values = differential_evolution(
-                self.objective_function,
-                self.get_bounds(),
-                workers=self.optimizer_settings.global_search_settings.n_jobs,
-                updating='deferred',
-                mutation=self.optimizer_settings.global_search_settings.mutation_rate,
-                popsize=self.optimizer_settings.global_search_settings.population_size
-            )
+
 
             # Iterate over the two hyper-parameter dictionaries
             fin_counter = 0
@@ -189,52 +235,10 @@ class QsrrModelOptimizer:
 
             print(toprint_final)
 
-        elif self.method == 'pls':
-
             # Partial Least Squares (PLS)
 
-            # Creating initial values
             print(' ')
             print('    --- Commencing Optimisation of PLS Model ---')
-
-            imax = 10
-
-            nlvs = self.zeros(imax)
-            rmsecv = self.zeros(imax)
-            for i in range(1, imax + 1):
-
-                # KFold object
-                kf = self.KFold(n_splits=self.n_splits)
-
-                # Initiate cross validation (CV) model
-                reg_opt = self.reg_opt()
-                reg_opt.set_params(n_components=i)
-                reg_opt.fit(self.x_train_opt, self.y_train_opt)
-
-                # Pre-loading variables
-                j = 0
-                # Construct Scoring Object
-                scorer_pls_opt = self.make_scorer(rmse_scorer, greater_is_better=False)
-                rmse_test = self.cross_val_score(reg_opt, self.x_train_opt, self.y_train_opt,
-                                                 cv=self.KFold(n_splits=self.n_splits), scoring=scorer_pls_opt)
-                for train_i, test_i in kf.split(self.x_train_opt, self.y_train_opt):
-                    # Defining the training set
-                    x_train_cv = self.x_train_opt[train_i]
-                    y_train_cv = self.y_train_opt[train_i]
-                    # Defining the left out set
-                    x_test_cv = self.x_train_opt[test_i]
-                    y_test_cv = self.y_train_opt[test_i]
-                    # Build PLS Model
-                    reg_cv = reg_opt.fit(x_train_cv, y_train_cv)
-                    # Generating RMSE
-                    y_test_hat_cv = reg_cv.predict(x_test_cv).ravel()
-                    rmse_test[j] = rmse_scorer(y_test_cv, y_test_hat_cv)
-                    rmse_test[j] = (self.sqrt(self.mean_squared_error(y_test_cv, y_test_hat_cv)))
-                    j += 1
-                # Gathering Statistics
-                nlvs[i - 1] = i
-                rmsecv[i - 1] = self.mean(rmse_test)
-            lvs = self.knee(nlvs, rmsecv)
 
             toprint_final = '    Optimised n(LVs): {} \n' \
                             '    RMSECV: {:.3f} \n' \
