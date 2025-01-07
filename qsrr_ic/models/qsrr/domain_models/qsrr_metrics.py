@@ -3,6 +3,7 @@ from typing import Optional
 import numpy as np
 
 from .qsrr_data import QsrrData
+from qsrr_ic.metrics import Metrics
 
 
 class QsrrMetrics:
@@ -22,7 +23,7 @@ class QsrrMetrics:
     @property
     def perc_mse(self) -> float:
         if self.__perc_mse is None:
-            self.__perc_mse = np.mean((self.qsrr_predictions.y - self.qsrr_data.y) / self.qsrr_data.y)  * 100
+            self.__perc_mse = Metrics.perc_mse(y=self.qsrr_data.y, y_hat=self.qsrr_predictions.y)
         return self.__perc_mse
 
     @perc_mse.setter
@@ -32,9 +33,7 @@ class QsrrMetrics:
     @property
     def perc_rmse(self) -> float:
         if self.__perc_rmse is None:
-            self.__perc_rmse = np.sqrt(
-                np.mean(((self.qsrr_predictions.y - self.qsrr_data.y) / self.qsrr_data.y) ** 2)
-            ) * 100
+            self.__perc_rmse = Metrics.perc_rmse(y=self.qsrr_data.y, y_hat=self.qsrr_predictions.y)
         return self.__perc_rmse
 
     @perc_rmse.setter
@@ -44,9 +43,7 @@ class QsrrMetrics:
     @property
     def rmse(self) -> float:
         if self.__rmse is None:
-            self.__rmse = np.sqrt(
-                np.mean((self.qsrr_predictions.y - self.qsrr_data.y) ** 2)
-            )
+            self.__rmse = Metrics.rmse(y=self.qsrr_data.y, y_hat=self.qsrr_predictions.y)
         return self.__perc_mse
 
     @rmse.setter

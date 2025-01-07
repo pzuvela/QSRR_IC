@@ -1,6 +1,25 @@
-from fnmatch import filter
-from typing import Optional
+from typing import (
+    Optional,
+    Union
+)
 
+import numpy as np
+from numpy import ndarray
+
+from scipy.optimize import (
+    Bounds,
+    differential_evolution
+)
+
+
+from sklearn.metrics import make_scorer
+from sklearn.model_selection import (
+    cross_val_score,
+    KFold,
+    LeaveOneOut
+)
+
+from qsrr_ic.metrics import Metrics
 from qsrr_ic.models.qsrr import QsrrModel
 from qsrr_ic.models.qsrr.domain_models import QsrrData
 from qsrr_ic.optimization.domain_models import (
@@ -9,7 +28,7 @@ from qsrr_ic.optimization.domain_models import (
     OptimizerSettings,
     OptimizerResults,
 )
-
+from qsrr_ic.optimization.enums import CrossValidationType
 
 # Dictionary of hyper-parameter ranges
 self.params_ranges = {'xgb': ({'n_est_lb': 10, 'n_est_ub': 500, 'lr_lb': 0.1, 'lr_ub': 0.9,
@@ -45,14 +64,35 @@ class QsrrModelOptimizer:
 
         self.optimal_hyper_parameters: HyperParameterRegistry = HyperParameterRegistry()
 
+        cv_kwargs = {}
 
-    def objective_function(self, params: ndarray):
+        if self.optimizer_settings.cv_settings.cv_type == CrossValidationType.KFold:
+            cv_kwargs = {"n_splits": self.optimizer_settings.cv_settings.n_splits}
 
-        # Iterate over the two hyper-parameter dictionaries
-        obj_fun_counter = 0
-        for key_param in params_ftypes[method]:
-            params_opt[method][key_param] = params_ftypes[method][key_param](x[obj_fun_counter])
-            obj_fun_counter += 1
+        self.cv: Union[KFold, LeaveOneOut] = self.optimizer_settings.cv_settings.cv_type.value(**cv_kwargs)
+
+    def get_bounds(self) -> Bounds:
+
+        bounds_lb = []
+        bounds_ub = []
+
+        for _, hp in self.optimizer_settings.hyper_parameter_ranges:
+            bounds_lb.append(hp.lower)
+            bounds_ub.append(hp.upper)
+
+        return Bounds(bounds_lb, bounds_ub)
+
+    def get_hyper_parameters_registry(self, hyper_parameters: ndarray[float]) -> HyperParameterRegistry:
+        hyper_parameters_dict = {
+            name: hyper_parameters[idx].item()
+            for idx, name in enumerate(self.optimizer_settings.hyper_parameter_ranges.names())
+        }
+        return HyperParameterRegistry.from_dict(hyper_parameters_dict)
+
+
+    def objective_function(self, hyper_parameters: ndarray[float]):
+
+        hyper_parameters = self.get_hyper_parameters_registry(hyper_parameters)
 
         model = QsrrModel(
             regressor_type=self.optimizer_settings.regressor_type,
@@ -61,18 +101,16 @@ class QsrrModelOptimizer:
             hyper_parameters=hyper_parameters
         )
 
-        reg_opt = (getattr(import_module(*models[method][0]), *models[method][1]))
-
-        opt_model = reg_opt(objective="reg:squarederror").set_params(**params_opt[method]) \
-            if method == 'xgb' else reg_opt(loss='exponential').set_params(**params_opt[method]) \
-            if method == 'ada' else reg_opt().set_params(**params_opt[method])
-
         # CV score
-        scorer_ens_opt = make_scorer(rmse_scorer)
-        score = cross_val_score(opt_model, x_train_opt, y_train_opt, cv=KFold(n_splits=n_splits),
-                                scoring=scorer_ens_opt)
+        score = cross_val_score(
+            model,
+            self.qsrr_train_data.x,
+            self.qsrr_train_data.y,
+            cv=self.cv,
+            scoring=make_scorer(Metrics.rmse)
+        )
 
-        return mean(score)
+        return np.mean(score)
 
     def optimize(self):
 
@@ -108,18 +146,16 @@ class QsrrModelOptimizer:
                         rmse_test_init)
             print(toprint_init)
 
-            # Creating bounds
-            bounds_lb = [self.params_ranges[self.method][i] for i in self.filter(self.params_ranges[self.method].keys(),
-                                                                                 '*lb*')]
-            bounds_ub = [self.params_ranges[self.method][i] for i in self.filter(self.params_ranges[self.method].keys(),
-                                                                                 '*ub*')]
-            bounds = self.opt.Bounds(bounds_lb, bounds_ub)
 
-            final_values = self.opt.differential_evolution(self.obj_fun, bounds, workers=self.proc_i,
-                                                           updating='deferred', mutation=(1.5, 1.9), popsize=20,
-                                                           args=([self.models, self.method, self.params_ftypes,
-                                                                  self.params_opt, self.reg_opt, self.x_train_opt,
-                                                                  self.y_train_opt, self.n_splits],))
+
+            final_values = differential_evolution(
+                self.objective_function,
+                self.get_bounds(),
+                workers=self.optimizer_settings.global_search_settings.n_jobs,
+                updating='deferred',
+                mutation=self.optimizer_settings.global_search_settings.mutation_rate,
+                popsize=self.optimizer_settings.global_search_settings.population_size
+            )
 
             # Iterate over the two hyper-parameter dictionaries
             fin_counter = 0

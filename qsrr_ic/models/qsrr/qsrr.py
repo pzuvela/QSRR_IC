@@ -18,6 +18,7 @@ from qsrr_ic.models.qsrr.enums import (
     RegressorType,
     REGRESSOR_MAPPING
 )
+from qsrr_ic.optimization.domain_models import HyperParameterRegistry
 
 
 class QsrrModel:
@@ -27,7 +28,7 @@ class QsrrModel:
         regressor_type: RegressorType,
         qsrr_train_data: QsrrData,
         qsrr_test_data: Optional[QsrrData] = None,
-        hyper_parameters: Optional[Dict[str, Any]] = None
+        hyper_parameters: Optional[HyperParameterRegistry] = None
     ):
         self.regressor_type = regressor_type
         self.qsrr_train_data = qsrr_train_data
@@ -63,7 +64,7 @@ class QsrrModel:
             model_kwargs["loss"] = "exponential"
         self.model = REGRESSOR_MAPPING[self.regressor_type](**model_kwargs)
         if self.hyper_parameters is not None:
-            self.model.set_params(**self.hyper_parameters)
+            self.model.set_params(**self.hyper_parameters.to_dict())
 
     def fit(self) -> None:
         """
