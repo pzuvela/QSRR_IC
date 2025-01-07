@@ -3,11 +3,8 @@ from typing import (
     Tuple
 )
 
+from qsrr_ic.domain_models import HyperParameterRegistry
 from qsrr_ic.models.qsrr.enums import RegressorType
-from qsrr_ic.optimization.domain_models import (
-    HyperParameter,
-    HyperParameterRegistry
-)
 from qsrr_ic.optimization.enums import CrossValidationType
 
 

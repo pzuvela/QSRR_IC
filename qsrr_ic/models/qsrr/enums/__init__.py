@@ -1,6 +1,6 @@
 from .regressor_type import (
     RegressorType,
-    REGRESSOR_MAPPING
+    REGRESSOR_MAPPING,
 )
 
 __all__ = [

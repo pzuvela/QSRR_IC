@@ -1,8 +1,8 @@
 import pytest
 from typing import Dict, Union, List
 
-from qsrr_ic.optimization.enums import HyperParameterName
-from qsrr_ic.optimization.domain_models import (
+from qsrr_ic.enums import HyperParameterName
+from qsrr_ic.domain_models import (
     HyperParameter,
     HyperParameterRange,
     HyperParameterRegistry

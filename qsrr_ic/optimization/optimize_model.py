@@ -19,18 +19,20 @@ from sklearn.model_selection import (
     LeaveOneOut
 )
 
-from qsrr_ic.metrics import Metrics
-from qsrr_ic.models.qsrr import QsrrModel
-from qsrr_ic.models.qsrr.domain_models import QsrrData
-from qsrr_ic.models.qsrr.enums import RegressorType
-from qsrr_ic.optimization.domain_models import (
+from qsrr_ic.domain_models import (
     HyperParameter,
     HyperParameterRegistry,
+)
+from qsrr_ic.metrics import Metrics
+from qsrr_ic.optimization.domain_models import (
     OptimizerSettings,
     OptimizerResults
 )
-from qsrr_ic.process.process_curve_data import ProcessCurveData
 from qsrr_ic.optimization.enums import CrossValidationType
+from qsrr_ic.process.process_curve_data import ProcessCurveData
+from qsrr_ic.models.qsrr import QsrrModel
+from qsrr_ic.models.qsrr.domain_models import QsrrData
+from qsrr_ic.models.qsrr.enums import RegressorType
 
 
 class QsrrModelOptimizer:

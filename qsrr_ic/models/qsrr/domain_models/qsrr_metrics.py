@@ -1,7 +1,5 @@
 from typing import Optional
 
-import numpy as np
-
 from .qsrr_data import QsrrData
 from qsrr_ic.metrics import Metrics
 

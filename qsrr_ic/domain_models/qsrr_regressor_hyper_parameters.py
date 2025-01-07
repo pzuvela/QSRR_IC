@@ -6,7 +6,7 @@ from typing import (
     Type
 )
 
-from qsrr_ic.optimization.enums import (
+from qsrr_ic.enums import (
     HyperParameterName,
     HYPER_PARAMETER_TYPE_MAPPING
 )

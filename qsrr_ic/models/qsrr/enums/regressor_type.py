@@ -28,3 +28,18 @@ REGRESSOR_MAPPING: Dict[RegressorType, Any] = {
     RegressorType.ADA: AdaBoostRegressor,
     RegressorType.PLS: PLSRegression
 }
+
+"""
+VALID_HYPER_PARAMETER_NAME_MAPPING: Dict[RegressorType, Tuple[HyperParameterName, ...]] = {
+    RegressorType.PLS:
+        (HyperParameterName.N_COMPONENTS, ),
+    RegressorType.xGB:
+        (HyperParameterName.N_ESTIMATORS, HyperParameterName.MAX_DEPTH, HyperParameterName.LEARNING_RATE),
+    RegressorType.GBR:
+        (HyperParameterName.N_ESTIMATORS, HyperParameterName.MAX_DEPTH, HyperParameterName.LEARNING_RATE),
+    RegressorType.ADA:
+        (HyperParameterName.N_ESTIMATORS, HyperParameterName.LEARNING_RATE),
+    RegressorType.RFR:
+        (HyperParameterName.N_ESTIMATORS, HyperParameterName.MAX_DEPTH, HyperParameterName.MIN_SAMPLES_LEAF)
+}
+"""
