@@ -36,24 +36,6 @@ from qsrr_ic.optimization.enums import (
     HyperParameterName
 )
 
-# Dictionary of hyper-parameter ranges
-self.params_ranges = {'xgb': ({'n_est_lb': 10, 'n_est_ub': 500, 'lr_lb': 0.1, 'lr_ub': 0.9,
-                               'max_depth_lb': 1, 'max_depth_ub': 5}),
-                      'gbr': ({'n_est_min': 10, 'n_est_max': 500, 'lr_min': 0.1, 'lr_max': 0.9,
-                               'max_depth_min': 1, 'max_depth_max': 5}),
-                      'ada': ({'n_est_lb': 300, 'n_est_ub': 1000, 'lr_lb': 0.1, 'lr_ub': 0.9}),
-                      'rfr': ({'n_est_lb': 100, 'n_est_ub': 500, 'max_depth_lb': 8, 'max_depth_ub': 20,
-                               'min_samples_lb': 1, 'min_samples_ub': 4}),
-                      }
-
-# Empty dictionary of hyper-parameters for the objective function
-self.params_opt = {'xgb': ({'n_estimators': int(), 'learning_rate': float(), 'max_depth': int()}),
-                   'gbr': ({'n_estimators': int(), 'learning_rate': float(), 'max_depth': int()}),
-                   'rfr': ({'n_estimators': int(), 'max_depth': int(), 'min_samples_leaf': int()}),
-                   'ada': ({'n_estimators': int(), 'learning_rate': float()})}
-
-
-
 
 class QsrrModelOptimizer:
 
@@ -69,6 +51,7 @@ class QsrrModelOptimizer:
         self.qsrr_test_data = qsrr_test_data
 
         self.optimal_hyper_parameters: Optional[HyperParameterRegistry] = None
+        self.optimal_qsrr_model: Optional[QsrrModel] = None
 
         cv_kwargs = {}
 
@@ -76,6 +59,8 @@ class QsrrModelOptimizer:
             cv_kwargs = {"n_splits": self.optimizer_settings.cv_settings.n_splits}
 
         self.cv: Union[KFold, LeaveOneOut] = self.optimizer_settings.cv_settings.cv_type.value(**cv_kwargs)
+
+        self.is_optimized: bool = True
 
     def get_bounds(self) -> Bounds:
 
@@ -166,95 +151,14 @@ class QsrrModelOptimizer:
 
     def optimize(self):
 
+        # Run Optimization
         if self.optimizer_settings.regressor_type == RegressorType.PLS:
             self._optimize_using_knee()
         else:
+            self._optimize_using_de()
 
-            # QSRR Optimisation
-            print('    ----------------- QSRR Optimisation ---------------')
+        # Fit Final model
+        self.optimal_qsrr_model = self.get_model(self.optimal_hyper_parameters)
+        self.optimal_qsrr_model.fit()
 
-            # Initial Params
-            params_init = self.reg_opt().get_params()
-
-            # Fit initial model
-            reg_de = self.reg_opt(objective="reg:squarederror") if self.method == 'xgb' \
-                else self.reg_opt(loss='exponential') if self.method == 'ada' else self.reg_opt()
-            reg_de.fit(self.x_train_opt, self.y_train_opt)
-
-            # Initial predictions
-            y_hat_train_init = reg_de.predict(self.x_train_opt)
-            y_hat_test_init = reg_de.predict(self.x_test_opt)
-            rmse_train_init = rmse_scorer(self.y_train_opt, y_hat_train_init)
-            rmse_test_init = rmse_scorer(self.y_test_opt, y_hat_test_init)
-            regopt_start = self.time()
-
-            toprint_init = '    --------------------- Initial Parameters ---------------------\n' \
-                           '    {}: {}\n' \
-                           '    Initial RMSEE: {:.2f}\n' \
-                           '    Initial RMSEP: {:.2f}\n' \
-                           '    ---------------------------------------------------------------' \
-                .format(list(self.params_opt[self.method].keys()),
-                        [params_init[i] for i in self.params_opt[self.method].keys()],
-                        rmse_train_init,
-                        rmse_test_init)
-            print(toprint_init)
-
-
-
-
-
-            # Iterate over the two hyper-parameter dictionaries
-            fin_counter = 0
-            for key in self.params_ftypes[self.method]:
-                self.params_final[self.method][key] = self.params_ftypes[self.method][key](final_values.x[fin_counter])
-                fin_counter += 1
-
-            self.params_final = self.params_final[self.method]  # Bug fix
-
-            reg_de.set_params(**self.params_final).fit(self.x_train_opt, self.y_train_opt)  # Bug fix
-
-            # Final Params
-            y_hat_train_final = reg_de.predict(self.x_train_opt)
-            rmse_train_final = rmse_scorer(self.y_train_opt, y_hat_train_final)
-            y_hat_test_final = reg_de.predict(self.x_test_opt)
-            rmse_test_final = rmse_scorer(self.y_test_opt, y_hat_test_final)
-            regopt_time = self.time() - regopt_start
-
-            toprint_final = '    ----------------------- Final Parameters ----------------------\n' \
-                            '    {}\n' \
-                            '    Final RMSECV: {:.3f}\n' \
-                            '    Final RMSEE: {:.2f}' \
-                            '    Final RMSEP: {:.2f}\n' \
-                            '    Optimisation Duration: {}\n' \
-                            '    ---------------------------------------------------------------' \
-                .format(self.params_final,
-                        final_values.fun,
-                        rmse_train_final,
-                        rmse_test_final,
-                        self.strftime("%H:%M:%S", self.gmtime(regopt_time)))
-
-            print(toprint_final)
-
-            # Partial Least Squares (PLS)
-
-            print(' ')
-            print('    --- Commencing Optimisation of PLS Model ---')
-
-            toprint_final = '    Optimised n(LVs): {} \n' \
-                            '    RMSECV: {:.3f} \n' \
-                            '    ------------ Completion of Optimisation ----------- \n'.format(lvs, rmsecv[lvs - 1])
-
-            print(toprint_final)
-
-            self.params_final = {'n_components': lvs}
-            self.opt_res = (nlvs, rmsecv)
-
-        else:
-
-            raise ValueError('# Please enter either ''xgb'', ''gbr'', ''ada'', ''rfr, or ''pls'' !')
-
-        with open(self.results_dir + '2019-QSRR_IC_PartIV-{}_{}_opt_run_{}.txt'.format(
-                self.datetime.now().strftime('%d_%m_%Y-%H_%M'), self.method, self.count), "w") as text_file:
-            text_file.write(toprint_final)
-
-        return self
+        self.is_optimized = True
