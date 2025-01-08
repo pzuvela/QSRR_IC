@@ -88,7 +88,7 @@ class QsrrModelOptimizer:
             bounds_ub.append(hp.upper.value)
         return Bounds(bounds_lb, bounds_ub)
 
-    def get_hyper_parameters_registry(self, hyper_parameters: ndarray[float]) -> HyperParameterRegistry:
+    def get_hyper_parameters_registry(self, hyper_parameters: ndarray) -> 'HyperParameterRegistry':
         """
         Converts a flat array of hyperparameters into a HyperParameterRegistry.
 
@@ -155,7 +155,7 @@ class QsrrModelOptimizer:
         qsrr_model = self.get_model(hyper_parameters)
         return self.cross_validate_model(qsrr_model, greater_is_better=greater_is_better)
 
-    def objective_function(self, hyper_parameters: ndarray[float]) -> float:
+    def objective_function(self, hyper_parameters: ndarray) -> float:
         """
         Wrapper for the objective function compatible with scipy.optimize.
 
@@ -169,6 +169,7 @@ class QsrrModelOptimizer:
         return self._objective_function(hyper_parameters)
 
     def _optimize_using_de(self):
+
         optimal_hyper_parameters = differential_evolution(
             self.objective_function,
             self.get_bounds(),
