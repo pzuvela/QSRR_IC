@@ -92,9 +92,11 @@ x_data, y_data = raw_data.drop(['tR', 'logk'], axis=1), raw_data[['logk']].value
 if opt_prompt == 'yes':
 
     # Randomly split the data into training and testing
-    x_train_unscaled_opt, x_test_unscaled_opt, y_train_opt, y_test_opt = train_test_split(x_data, y_data,
-                                                                                          test_size=0.3,
-                                                                                          shuffle=True)
+    x_train_unscaled_opt, x_test_unscaled_opt, y_train_opt, y_test_opt = train_test_split(
+        x_data, y_data,
+        test_size=0.3,
+        shuffle=True
+    )
 
     # Define a scaling object
     sc_opt = StandardScaler()

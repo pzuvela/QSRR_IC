@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+
 from qsrr_ic.process import ProcessCurveData
 
 

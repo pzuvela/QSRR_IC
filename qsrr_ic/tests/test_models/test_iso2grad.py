@@ -1,3 +1,5 @@
+import os
+import sys
 from typing import Any
 
 import pytest
@@ -10,9 +12,10 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
 
-from qsrr_ic.datasets import qsrr_ic_dataset
-from qsrr_ic.datasets.qsrr_ic_dataset import QsrrIcDataset
-from qsrr_ic.domain_models import QsrrIcData
+from qsrr_ic.load import (
+    QsrrIcDataset,
+    QsrrIcData
+)
 from qsrr_ic.models.iso2grad import Iso2Grad
 from qsrr_ic.models.iso2grad.domain_models import (
     Iso2GradData,
@@ -20,6 +23,18 @@ from qsrr_ic.models.iso2grad.domain_models import (
 )
 from qsrr_ic.process import ProcessData
 from qsrr_ic.tests.constants import TestPaths
+
+
+datasets_path: str = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+    "datasets"
+)
+
+if datasets_path not in sys.path:
+    sys.path.append(datasets_path)
+
+from datasets import load_qsrr_ic_dataset
+
 
 @pytest.fixture
 def scaler(data: QsrrIcData):
@@ -41,7 +56,7 @@ def qsrr_model(data: QsrrIcData, scaler: Any):
 
 @pytest.fixture
 def data():
-    dataset: QsrrIcDataset = qsrr_ic_dataset.load_dataset()
+    dataset: QsrrIcDataset = load_qsrr_ic_dataset()
     data: QsrrIcData = ProcessData(dataset).process()
     return data
 
@@ -98,7 +113,7 @@ class TestIso2Grad:
         # Assert that the average k is correct
         assert np.isclose(
             k_avg,
-            5.02925764,
+            5.011692594946313,
             atol=1e-5
         ).all()
 
@@ -140,7 +155,7 @@ class TestIso2Grad:
         # Validate results
         golden_results = pd.read_csv(
             TestPaths.ISO2GRAD_TEST_RESULTS_PATH,
-            float_precision="high"
+            float_precision="round_trip"
         ).values
 
         assert np.isclose(

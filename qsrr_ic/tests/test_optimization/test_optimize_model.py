@@ -5,20 +5,21 @@ import numpy as np
 from scipy.optimize import Bounds
 
 from qsrr_ic.config import DEFAULT_HYPER_PARAMETER_RANGES
+from qsrr_ic.enums import (
+    CrossValidationType,
+    RegressorType
+)
 from qsrr_ic.domain_models import (
+    CrossValidationSettings,
+    GlobalSearchSettings,
     HyperParameter,
     HyperParameterRange,
     HyperParameterRegistry
 )
 from qsrr_ic.enums import HyperParameterName
-from qsrr_ic.optimization.domain_models import (
-    CrossValidationSettings,
-    GlobalSearchSettings,
-    OptimizerSettings,
-)
-from qsrr_ic.optimization.enums import CrossValidationType
+from qsrr_ic.optimization.domain_models import OptimizerSettings
+
 from qsrr_ic.optimization.optimize_model import QsrrModelOptimizer
-from qsrr_ic.models.qsrr.enums import RegressorType
 from qsrr_ic.models.qsrr.domain_models import QsrrData
 
 

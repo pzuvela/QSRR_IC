@@ -1,40 +1,13 @@
-from typing import (
-    Optional,
-    Tuple
+from typing import Optional
+
+from qsrr_ic.domain_models import (
+    CrossValidationSettings,
+    HyperParameterRegistry,
+    GlobalSearchSettings
 )
-
-from qsrr_ic.domain_models import HyperParameterRegistry
-from qsrr_ic.models.qsrr.enums import RegressorType
-from qsrr_ic.optimization.enums import CrossValidationType
+from qsrr_ic.enums import RegressorType
 
 
-class CrossValidationSettings:
-    def __init__(
-        self,
-        cv_type: CrossValidationType = CrossValidationType.KFold,
-        n_splits: Optional[int] = 3
-    ):
-        self.cv_type = cv_type
-
-        if self.cv_type == CrossValidationType.KFold:
-            if n_splits is None:
-                raise ValueError("n_splits cannot be None for CV type KFold!")
-            if n_splits < 0:
-                raise ValueError("n_splits cannot be negative!")
-
-        self.n_splits = n_splits
-
-
-class GlobalSearchSettings:
-    def __init__(
-        self,
-        population_size: int = 20,
-        mutation_rate: Tuple[float] = (1.5, 1.9),
-        n_jobs: int = -1
-    ):
-        self.population_size = population_size
-        self.mutation_rate = mutation_rate
-        self.n_jobs = n_jobs
 
 
 class OptimizerSettings:

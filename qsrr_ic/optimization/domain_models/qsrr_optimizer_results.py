@@ -1,6 +1,6 @@
 from qsrr_ic.domain_models import HyperParameterRegistry
+from qsrr_ic.enums import RegressorType
 from qsrr_ic.models.qsrr import QsrrModel
-from qsrr_ic.models.qsrr.enums import RegressorType
 
 
 class OptimizerResults:

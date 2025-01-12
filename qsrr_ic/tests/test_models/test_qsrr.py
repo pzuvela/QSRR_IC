@@ -3,8 +3,11 @@ from unittest.mock import MagicMock
 import pytest
 import numpy as np
 
-from qsrr_ic.models.qsrr.domain_models import QsrrData, QsrrResults
-from qsrr_ic.models.qsrr.enums import RegressorType
+from qsrr_ic.enums import RegressorType
+from qsrr_ic.models.qsrr.domain_models import (
+    QsrrData,
+    QsrrResults
+)
 from qsrr_ic.models.qsrr import QsrrModel
 
 

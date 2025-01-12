@@ -8,14 +8,14 @@ from numpy import ndarray
 
 from sklearn.metrics import r2_score
 
+from qsrr_ic.enums import (
+    RegressorType,
+    REGRESSOR_MAPPING
+)
 from qsrr_ic.models.qsrr.domain_models import (
     QsrrData,
     QsrrMetrics,
     QsrrResults
-)
-from qsrr_ic.models.qsrr.enums import (
-    RegressorType,
-    REGRESSOR_MAPPING
 )
 from qsrr_ic.domain_models import HyperParameterRegistry
 

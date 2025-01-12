@@ -8,8 +8,10 @@ import pandas as pd
 import pytest
 
 from qsrr_ic.constants import QsrrIcConstants
-from qsrr_ic.datasets.qsrr_ic_dataset import QsrrIcDataset
-from qsrr_ic.domain_models import QsrrIcData
+from qsrr_ic.load import (
+    QsrrIcData,
+    QsrrIcDataset
+)
 from qsrr_ic.process.process_data import ProcessData
 
 

@@ -4,8 +4,10 @@ from numpy import ndarray
 from pandas import DataFrame
 
 from qsrr_ic.constants import QsrrIcConstants
-from qsrr_ic.datasets.qsrr_ic_dataset import QsrrIcDataset
-from qsrr_ic.domain_models import QsrrIcData
+from qsrr_ic.load import (
+    QsrrIcData,
+    QsrrIcDataset
+)
 
 
 class ProcessData:

@@ -1,0 +1,48 @@
+{
+    "dataset": {
+        "molecular_descriptors_for_qsrr_training_path": "",
+        "isocratic_retention_path": "",
+        "molecular_descriptors_for_iso2grad_path": "",
+        "gradient_void_times_path": "",
+        "gradient_profiles_path": "",
+        "gradient_retention_path": ""
+    },
+    "training_type": "optimization",
+    "train_test_split": {
+        "test_ratio": 0.7,
+        "random_seed": 0,
+        "shuffle": true
+    },
+    "hyper_parameters": {
+      "PLS": {
+        "n_components": 4
+      },
+      "xGB": {
+          "n_estimators": 497,
+          "learning_rate": 0.23,
+          "max_depth": 2
+      },
+      "GBR": {
+          "n_estimators": 485,
+          "learning_rate": 0.23,
+          "max_depth": 2
+      },
+      "RFR": {
+          "n_estimators": 150,
+          "max_depth": 15,
+          "min_samples_leaf": 1
+      },
+      "ADA": {
+          "n_estimators": 676,
+          "learning_rate": 0.1284015
+      }
+    },
+    "iso2grad_parameters": {
+      "integration_step": 0.01,
+      "n_jobs": -1,
+      "verbosity": 10
+    },
+    "cross_validation": null,
+    "optimization": null,
+    "results_path": ""
+}
