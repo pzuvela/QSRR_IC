@@ -15,26 +15,26 @@
     },
     "hyper_parameters": {
       "PLS": {
-        "n_components": 4
+        "n_components": [1, 10]
       },
       "xGB": {
-          "n_estimators": 497,
-          "learning_rate": 0.23,
-          "max_depth": 2
+          "n_estimators": [10, 500],
+          "learning_rate": [0.1, 0.9],
+          "max_depth": [1, 5]
       },
       "GBR": {
-          "n_estimators": 485,
-          "learning_rate": 0.23,
-          "max_depth": 2
+          "n_estimators": [10, 500],
+          "learning_rate": [0.1, 0.9],
+          "max_depth": [1, 5]
       },
       "RFR": {
-          "n_estimators": 150,
-          "max_depth": 15,
-          "min_samples_leaf": 1
+          "n_estimators": [10, 500],
+          "max_depth": [8, 20],
+          "min_samples_leaf": [1, 4]
       },
       "ADA": {
-          "n_estimators": 676,
-          "learning_rate": 0.1284015
+          "n_estimators": [10, 500],
+          "learning_rate": [0.1, 0.9]
       }
     },
     "iso2grad_parameters": {

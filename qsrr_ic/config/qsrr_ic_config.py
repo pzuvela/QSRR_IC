@@ -216,7 +216,8 @@ class QsrrIcConfig(BaseConfig):
         hyper_parameter_config: Dict[RegressorType, HyperParameterConfig],
         iso2grad_config: Optional[Iso2GradConfig],
         cross_validation_config: Optional[CrossValidationConfig],
-        global_search_config: Optional[GlobalSearchConfig]
+        global_search_config: Optional[GlobalSearchConfig],
+        results_path: str
     ):
         self.dataset_config: DatasetConfig = dataset_config
         self.training_type: TrainingType = training_type
@@ -225,6 +226,7 @@ class QsrrIcConfig(BaseConfig):
         self.iso2grad_config = iso2grad_config
         self.cross_validation_config = cross_validation_config
         self.global_search_config = global_search_config
+        self.results_path = results_path
 
     @classmethod
     def from_dict(cls, qsrr_ic_config_dict: Dict[str, Any]) -> 'QsrrIcConfig':
@@ -291,6 +293,8 @@ class QsrrIcConfig(BaseConfig):
         if global_search_config_dict is not None:
             global_search_config = GlobalSearchConfig.from_dict(global_search_config_dict)
 
+        results_path = qsrr_ic_config_dict.get("results_path", "")
+
         return cls(
             dataset_config=dataset_config,
             training_type=training_type_enum,
@@ -298,7 +302,8 @@ class QsrrIcConfig(BaseConfig):
             hyper_parameter_config=hyper_parameter_config,
             iso2grad_config=iso2grad_config,
             cross_validation_config=cross_validation_config,
-            global_search_config=global_search_config
+            global_search_config=global_search_config,
+            results_path=results_path
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -332,5 +337,6 @@ class QsrrIcConfig(BaseConfig):
             },
             "iso2grad_parameters": iso2grad_parameters,
             "cross_validation": cross_validation,
-            "global_search": global_search
+            "global_search": global_search,
+            "results_path": self.results_path
         }

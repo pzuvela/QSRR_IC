@@ -189,6 +189,7 @@ class TestQsrrIcConfig:
             "iso2grad_parameters": {"integration_step": 0.01, "n_jobs": -1, "verbosity": 10},
             "cross_validation": {"cv_type": "KFold", "n_splits": 5},
             "global_search": {"population_size": 20, "mutation_rate": (1.5, 1.9), "n_jobs": -1},
+            "results_path": ""
         }
 
     def test_to_dict(self, valid_config_data):
