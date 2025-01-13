@@ -1,10 +1,10 @@
-from typing import (
-    Any,
-    Dict
-)
+from typing import Dict
 
 from qsrr_ic.config import QsrrIcConfig
-from qsrr_ic.enums import TrainingType
+from qsrr_ic.enums import (
+    RegressorType,
+    TrainingType
+)
 from qsrr_ic.load import (
     load_dataset,
     QsrrIcData,
@@ -12,7 +12,6 @@ from qsrr_ic.load import (
 )
 from qsrr_ic.models.qsrr import QsrrModel
 from qsrr_ic.models.qsrr.domain_models import QsrrData
-from qsrr_ic.models.qsrr.enums import RegressorType
 from qsrr_ic.optimization import QsrrModelOptimizer
 from qsrr_ic.optimization.domain_models import (
     OptimizerSettings,
