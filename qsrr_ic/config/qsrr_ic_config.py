@@ -192,7 +192,7 @@ class GlobalSearchConfig(BaseConfig):
     def to_dict(self):
         return {
             "population_size": self.global_search_settings.population_size,
-            "mutation_rate": self.global_search_settings.mutation_rate,
+            "mutation_rate": list(self.global_search_settings.mutation_rate),
             "n_jobs": self.global_search_settings.n_jobs
         }
 
@@ -201,7 +201,7 @@ class GlobalSearchConfig(BaseConfig):
         return cls(
             global_search_settings=GlobalSearchSettings(
                 population_size=global_search_settings_dict.get("population_size", 20),
-                mutation_rate=global_search_settings_dict.get("mutation_rate", (1.5, 1.9)),
+                mutation_rate=tuple(global_search_settings_dict.get("mutation_rate", [1.5, 1.9])),
                 n_jobs=global_search_settings_dict.get("n_jobs", -1)
             )
         )
