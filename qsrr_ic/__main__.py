@@ -1,6 +1,10 @@
-from typing import Dict
+from typing import (
+    Dict,
+    List
+)
 
-from qsrr_ic.config import QsrrIcConfig
+from qsrr_ic.config import QsrrIcConfig, HyperParameterConfig
+from qsrr_ic.domain_models import HyperParameterRegistry
 from qsrr_ic.enums import (
     RegressorType,
     TrainingType
@@ -20,6 +24,7 @@ from qsrr_ic.optimization.domain_models import (
 from qsrr_ic.process import ProcessData
 from qsrr_ic.runners import (
     QsrrModelRunner,
+    QsrrResamplingWithReplacementModelRunner,
     QsrrOptimizerRunner,
     QsrrIcModelRunner
 )
@@ -47,6 +52,8 @@ def main(settings_path: str):
 
     qsrr_models: Dict[RegressorType, QsrrModel] = {}
 
+    hyper_parameter_configs: Dict[RegressorType, HyperParameterConfig] = {}
+
     for regressor_type, hyper_parameter_config in config.hyper_parameter_config.items():
 
         if config.training_type == TrainingType.Optimization:
@@ -71,6 +78,10 @@ def main(settings_path: str):
             )
 
             qsrr_models[regressor_type] = optimizer_results.optimal_qsrr_model
+            hyper_parameter_configs[regressor_type] = HyperParameterConfig(
+                regressor_type=regressor_type,
+                hyper_parameter_registry=optimizer_results.optimal_hyper_parameters
+            )
 
         elif config.training_type == TrainingType.SingleTrain:
 
@@ -86,8 +97,28 @@ def main(settings_path: str):
             )
 
             qsrr_models[regressor_type] = model
+            hyper_parameter_configs[regressor_type] = hyper_parameter_config
 
+    # 6. Train IC models
 
+    # 7. Resampling with replacement
+    bootstrapped_models: Dict[RegressorType, List[QsrrModel]] = {}
+
+    if config.resampling_with_replacement_config is not None \
+        and config.resampling_with_replacement_config.use_resampling:
+
+        for regressor_type, hyper_parameter_config in hyper_parameter_configs.items():
+            model_runner = QsrrResamplingWithReplacementModelRunner()
+            bootstrapped_models[regressor_type] = model_runner.run(
+                regressor_type=regressor_type,
+                config=config.resampling_with_replacement_config,
+                hyper_parameter_config=hyper_parameter_config,
+                train_test_config=config.train_test_split_config,
+                qsrr_data=qsrr_data
+            )
+
+    # 8. Save results
+    ...
 
 if __name__ == "__main__":
     main()

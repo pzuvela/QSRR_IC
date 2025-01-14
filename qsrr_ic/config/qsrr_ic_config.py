@@ -206,6 +206,35 @@ class GlobalSearchConfig(BaseConfig):
             )
         )
 
+class ResamplingWithReplacementConfig(BaseConfig):
+    def __init__(
+        self,
+        use_resampling: bool,
+        n_samples: int,
+        n_jobs: int,
+        verbosity: int
+    ):
+        self.use_resampling = use_resampling
+        self.n_samples = n_samples
+        self.n_jobs = n_jobs
+        self.verbosity = verbosity
+
+    def to_dict(self):
+        return {
+            "use_resampling": self.use_resampling,
+            "n_samples": self.n_samples,
+            "n_jobs": self.n_jobs,
+            "verbosity": self.verbosity
+        }
+
+    @classmethod
+    def from_dict(cls, resampling_with_replacement_dict: Dict[str, Any]) -> "ResamplingWithReplacementConfig":
+        return cls(
+            use_resampling=resampling_with_replacement_dict.get("use_resampling", False),
+            n_samples=resampling_with_replacement_dict.get("n_samples", 10000),
+            n_jobs=resampling_with_replacement_dict.get("n_jobs", -1),
+            verbosity=resampling_with_replacement_dict.get("verbosity", 20)
+        )
 
 class QsrrIcConfig(BaseConfig):
     def __init__(
@@ -215,6 +244,7 @@ class QsrrIcConfig(BaseConfig):
         train_test_split_config: TrainTestSplitConfig,
         hyper_parameter_config: Dict[RegressorType, HyperParameterConfig],
         iso2grad_config: Optional[Iso2GradConfig],
+        resampling_with_replacement_config: Optional[ResamplingWithReplacementConfig],
         cross_validation_config: Optional[CrossValidationConfig],
         global_search_config: Optional[GlobalSearchConfig],
         results_path: str
@@ -224,6 +254,7 @@ class QsrrIcConfig(BaseConfig):
         self.train_test_split_config: TrainTestSplitConfig = train_test_split_config
         self.hyper_parameter_config = hyper_parameter_config
         self.iso2grad_config = iso2grad_config
+        self.resampling_with_replacement_config = resampling_with_replacement_config
         self.cross_validation_config = cross_validation_config
         self.global_search_config = global_search_config
         self.results_path = results_path
@@ -273,6 +304,17 @@ class QsrrIcConfig(BaseConfig):
         if iso2grad_config_dict is not None:
             iso2grad_config = Iso2GradConfig.from_dict(iso2grad_config_dict)
 
+        resampling_with_replacement_config_dict: Optional[Dict[str, Any]] = qsrr_ic_config_dict.get(
+            "resampling_with_replacement",
+            None
+        )
+
+        resampling_with_replacement_config: Optional[ResamplingWithReplacementConfig] = None
+        if resampling_with_replacement_config_dict is not None:
+            resampling_with_replacement_config = ResamplingWithReplacementConfig.from_dict(
+                resampling_with_replacement_config_dict
+            )
+
         cross_validation_config_dict: Optional[Dict[str, Any]] = qsrr_ic_config_dict.get(
             "cross_validation",
             None
@@ -301,6 +343,7 @@ class QsrrIcConfig(BaseConfig):
             train_test_split_config=train_test_split_config,
             hyper_parameter_config=hyper_parameter_config,
             iso2grad_config=iso2grad_config,
+            resampling_with_replacement_config=resampling_with_replacement_config,
             cross_validation_config=cross_validation_config,
             global_search_config=global_search_config,
             results_path=results_path
@@ -317,6 +360,11 @@ class QsrrIcConfig(BaseConfig):
 
         if self.iso2grad_config is not None:
             iso2grad_parameters = self.iso2grad_config.to_dict()
+
+        resampling_with_replacement = None
+
+        if self.resampling_with_replacement_config is not None:
+            resampling_with_replacement = self.resampling_with_replacement_config.to_dict()
 
         cross_validation = None
 
@@ -336,6 +384,7 @@ class QsrrIcConfig(BaseConfig):
                 regressor_type.name:config.to_dict()["hyper_parameters"] for regressor_type, config in self.hyper_parameter_config.items()
             },
             "iso2grad_parameters": iso2grad_parameters,
+            "resampling_with_replacement": resampling_with_replacement,
             "cross_validation": cross_validation,
             "global_search": global_search,
             "results_path": self.results_path

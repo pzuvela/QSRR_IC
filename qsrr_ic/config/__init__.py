@@ -5,6 +5,7 @@ from .qsrr_ic_config import (
     GlobalSearchConfig,
     HyperParameterConfig,
     Iso2GradConfig,
+    ResamplingWithReplacementConfig,
     TrainTestSplitConfig,
     QsrrIcConfig,
     DEFAULT_HYPER_PARAMETER_RANGES
@@ -16,6 +17,7 @@ __all__ = [
     "GlobalSearchConfig",
     "HyperParameterConfig",
     "Iso2GradConfig",
+    "ResamplingWithReplacementConfig",
     "TrainTestSplitConfig",
     "QsrrIcConfig",
     "DEFAULT_HYPER_PARAMETER_RANGES"
