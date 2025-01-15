@@ -5,13 +5,10 @@ from typing import Any
 import pytest
 
 import numpy as np
-from numpy import ndarray
 
 import pandas as pd
 
-from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import StandardScaler
-
+from qsrr_ic.enums import RegressorType
 from qsrr_ic.load import (
     QsrrIcDataset,
     QsrrIcData
@@ -21,6 +18,8 @@ from qsrr_ic.models.iso2grad.domain_models import (
     Iso2GradData,
     Iso2GradSettings
 )
+from qsrr_ic.models.qsrr import QsrrModel
+from qsrr_ic.models.qsrr.domain_models import QsrrData
 from qsrr_ic.process import ProcessData
 from qsrr_ic.tests.constants import TestPaths
 
@@ -35,23 +34,16 @@ if datasets_path not in sys.path:
 
 from datasets import load_qsrr_ic_dataset
 
-
 @pytest.fixture
-def scaler(data: QsrrIcData):
-    scaler: StandardScaler = StandardScaler()
-    scaler.fit(data.molecular_descriptors_for_qsrr_training)
-    return scaler
-
-@pytest.fixture
-def qsrr_model(data: QsrrIcData, scaler: Any):
-    molecular_descriptors_scaled: ndarray = scaler.transform(
-        data.molecular_descriptors_for_qsrr_training
+def qsrr_model(data: QsrrIcData):
+    qsrr_model = QsrrModel(
+        regressor_type=RegressorType.PLS,
+        qsrr_train_data=QsrrData(
+            x=data.molecular_descriptors_for_qsrr_training,
+            y=data.isocratic_retention
+        )
     )
-    qsrr_model = LinearRegression()
-    qsrr_model.fit(
-        molecular_descriptors_scaled,
-        data.isocratic_retention
-    )
+    qsrr_model.fit()
     return qsrr_model
 
 @pytest.fixture
@@ -62,7 +54,7 @@ def data():
 
 
 @pytest.fixture
-def iso2grad(data: QsrrIcData, qsrr_model: Any, scaler: Any):
+def iso2grad(data: QsrrIcData, qsrr_model: Any):
 
     # Instantiate the data & settings required by the Iso2grad model
     iso2grad_data = Iso2GradData(
@@ -79,7 +71,6 @@ def iso2grad(data: QsrrIcData, qsrr_model: Any, scaler: Any):
     # Run the model
     iso2grad_model = Iso2Grad(
         qsrr_model=qsrr_model,
-        scaler=scaler,
         iso2grad_data=iso2grad_data,
         iso2grad_settings=iso2grad_settings
     )
@@ -113,7 +104,7 @@ class TestIso2Grad:
         # Assert that the average k is correct
         assert np.isclose(
             k_avg,
-            5.011692594946313,
+            3.91286262,
             atol=1e-5
         ).all()
 

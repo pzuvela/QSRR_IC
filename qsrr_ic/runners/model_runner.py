@@ -97,13 +97,11 @@ class QsrrIcModelRunner(ModelRunner):
     def _run(
         self,
         qsrr_model: Any,
-        scaler: Any,
         iso2grad_data: Iso2GradData,
         iso2grad_settings: Iso2GradSettings
     ):
         model = Iso2Grad(
             qsrr_model,
-            scaler,
             iso2grad_data,
             iso2grad_settings
         )

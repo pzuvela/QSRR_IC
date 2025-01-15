@@ -163,7 +163,7 @@ class TestGlobalSearchConfig:
     def valid_config_data(self):
         return {
             "population_size": 20,
-            "mutation_rate": (1.5, 1.9),
+            "mutation_rate": [1.5, 1.9],
             "n_jobs": -1,
         }
 
@@ -188,7 +188,13 @@ class TestQsrrIcConfig:
             },
             "iso2grad_parameters": {"integration_step": 0.01, "n_jobs": -1, "verbosity": 10},
             "cross_validation": {"cv_type": "KFold", "n_splits": 5},
-            "global_search": {"population_size": 20, "mutation_rate": (1.5, 1.9), "n_jobs": -1},
+            "global_search": {"population_size": 20, "mutation_rate": [1.5, 1.9], "n_jobs": -1},
+            "resampling_with_replacement": {
+                "use_resampling": True,
+                "n_samples": 10000,
+                "n_jobs": -1,
+                "verbosity": 10
+            },
             "results_path": ""
         }
 

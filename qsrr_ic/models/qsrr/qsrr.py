@@ -7,6 +7,7 @@ import numpy as np
 from numpy import ndarray
 
 from sklearn.metrics import r2_score
+from sklearn.preprocessing import StandardScaler
 
 from qsrr_ic.enums import (
     RegressorType,
@@ -43,6 +44,7 @@ class QsrrModel:
 
         self.__validate_inputs()
         self.__instantiate_model()
+        self.__fit_scaler()
 
     def __validate_inputs(self) -> None:
         if not isinstance(self.qsrr_train_data, QsrrData):
@@ -65,15 +67,21 @@ class QsrrModel:
         if self.hyper_parameters is not None:
             self.model = self.model.set_params(**self.hyper_parameters.to_dict())
 
+    def __fit_scaler(self) -> None:
+        self.scaler: StandardScaler = StandardScaler()
+        self.scaler.fit(self.qsrr_train_data.x)
+
     def fit(self) -> None:
         """
         Train the QSRR model using the provided training data.
         """
         try:
-            self.model.fit(self.qsrr_train_data.x, self.qsrr_train_data.y)
+            self.model.fit(self.scaler.transform(self.qsrr_train_data.x), self.qsrr_train_data.y)
         except Exception as e:
             raise RuntimeError(f"An error occurred while fitting the model: {e}")
+
         self.is_fitted = True
+
         self.__train_results = None
         self.__test_results = None  # Reset results after refitting
 
@@ -117,7 +125,7 @@ class QsrrModel:
         raise ValueError("PLS R2 cannot be set!")
 
     def _calculate_results(self, data: QsrrData) -> QsrrResults:
-        predictions = self.model.predict(data.x).ravel()
+        predictions = self.model.predict(self.scaler.transform(data.x)).ravel()
         qsrr_predictions = QsrrData(y=predictions)
         qsrr_metrics = QsrrMetrics(qsrr_data=data, qsrr_predictions=qsrr_predictions)
         return QsrrResults(qsrr_predictions=qsrr_predictions, qsrr_metrics=qsrr_metrics)
@@ -139,7 +147,7 @@ class QsrrModel:
         if not hasattr(self.model, "x_scores_"):
             raise AttributeError("PLS model does not have 'x_scores_' attribute.")
 
-        total_x_variance = np.var(self.qsrr_train_data.x, axis=0, ddof=1).sum()
+        total_x_variance = np.var(self.scaler.transform(self.qsrr_train_data.x), axis=0, ddof=1).sum()
         explained_x_variance = np.var(self.model.x_scores_, axis=0, ddof=1).sum()
 
         if total_x_variance == 0:

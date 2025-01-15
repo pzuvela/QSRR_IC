@@ -4,6 +4,7 @@ from typing import (
     Optional
 )
 
+from qsrr_ic.analysis.srd.domain_models import SrdSettings
 from qsrr_ic.domain_models import (
     CrossValidationSettings,
     GlobalSearchSettings,
@@ -206,6 +207,7 @@ class GlobalSearchConfig(BaseConfig):
             )
         )
 
+
 class ResamplingWithReplacementConfig(BaseConfig):
     def __init__(
         self,
@@ -236,6 +238,30 @@ class ResamplingWithReplacementConfig(BaseConfig):
             verbosity=resampling_with_replacement_dict.get("verbosity", 20)
         )
 
+
+class SrdConfig(BaseConfig):
+    def __init__(
+        self,
+        use_srd: bool,
+        srd_settings: SrdSettings
+    ):
+        self.use_srd = use_srd
+        self.srd_settings = srd_settings
+
+    @classmethod
+    def from_dict(cls, srd_config_dict: Dict[str, Any]) -> "SrdConfig":
+        return cls(
+            use_srd=srd_config_dict.get("use_srd", True),
+            srd_settings=SrdSettings.from_dict(srd_config_dict.get("settings", None)) or SrdSettings()
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "use_srd": self.use_srd,
+            "srd_settings": self.srd_settings.to_dict()
+        }
+
+
 class QsrrIcConfig(BaseConfig):
     def __init__(
         self,
@@ -247,6 +273,7 @@ class QsrrIcConfig(BaseConfig):
         resampling_with_replacement_config: Optional[ResamplingWithReplacementConfig],
         cross_validation_config: Optional[CrossValidationConfig],
         global_search_config: Optional[GlobalSearchConfig],
+        srd_config: Optional[SrdConfig],
         results_path: str
     ):
         self.dataset_config: DatasetConfig = dataset_config
@@ -257,6 +284,7 @@ class QsrrIcConfig(BaseConfig):
         self.resampling_with_replacement_config = resampling_with_replacement_config
         self.cross_validation_config = cross_validation_config
         self.global_search_config = global_search_config
+        self.srd_config = srd_config
         self.results_path = results_path
 
     @classmethod
@@ -335,6 +363,16 @@ class QsrrIcConfig(BaseConfig):
         if global_search_config_dict is not None:
             global_search_config = GlobalSearchConfig.from_dict(global_search_config_dict)
 
+        srd_config_dict: Optional[Dict[str, Any]] = qsrr_ic_config_dict.get(
+            "srd_config",
+            None
+        )
+
+        srd_config: Optional[SrdConfig] = None
+
+        if srd_config_dict is not None:
+            srd_config = SrdConfig.from_dict(srd_config_dict)
+
         results_path = qsrr_ic_config_dict.get("results_path", "")
 
         return cls(
@@ -346,6 +384,7 @@ class QsrrIcConfig(BaseConfig):
             resampling_with_replacement_config=resampling_with_replacement_config,
             cross_validation_config=cross_validation_config,
             global_search_config=global_search_config,
+            srd_config=srd_config,
             results_path=results_path
         )
 

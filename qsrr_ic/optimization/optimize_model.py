@@ -74,6 +74,7 @@ class QsrrModelOptimizer:
             cv_kwargs = {"n_splits": self.optimizer_settings.cv_settings.n_splits}
 
         self.cv: Union[KFold, LeaveOneOut] = self.optimizer_settings.cv_settings.cv_type.value(**cv_kwargs)
+
         self.is_optimized: bool = False
 
     def get_bounds(self) -> Bounds:
@@ -136,7 +137,7 @@ class QsrrModelOptimizer:
         """
         score = cross_val_score(
             qsrr_model.model,
-            self.qsrr_train_data.x,
+            qsrr_model.scaler.transform(self.qsrr_train_data.x),
             self.qsrr_train_data.y,
             cv=self.cv,
             scoring=make_scorer(Metrics.rmse, greater_is_better=greater_is_better),

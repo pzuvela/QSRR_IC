@@ -1,11 +1,11 @@
 {
     "dataset": {
-        "molecular_descriptors_for_qsrr_training_path": "",
-        "isocratic_retention_path": "",
-        "molecular_descriptors_for_iso2grad_path": "",
-        "gradient_void_times_path": "",
-        "gradient_profiles_path": "",
-        "gradient_retention_path": ""
+        "molecular_descriptors_for_qsrr_training_path": "./datasets/qsrr_ic/2025-01-05-molecular_descriptors_for_qsrr_training.csv",
+        "isocratic_retention_path":  "./datasets/qsrr_ic/2025-01-05-isocratic_retention.csv",
+        "molecular_descriptors_for_iso2grad_path": "./datasets/qsrr_ic/2025-01-05-molecular_descriptors_for_iso2grad.csv",
+        "gradient_void_times_path": "./datasets/qsrr_ic/2025-01-05-molecular_descriptors_for_iso2grad.csv",
+        "gradient_profiles_path": "./datasets/qsrr_ic/2025-01-05-gradient_profiles.csv",
+        "gradient_retention_path": "./datasets/qsrr_ic/2025-01-05-gradient_retention.csv"
     },
     "training_type": "optimization",
     "train_test_split": {
@@ -57,5 +57,13 @@
       "mutation_rate": [1.5, 1.9],
       "n_jobs": -1
     },
-    "results_path": ""
+    "srd": {
+        "use_srd": true,
+        "settings": {
+          "validate_using_crnn":  true,
+          "n_iterations": 10000,
+          "exact": false
+        }
+    },
+    "results_path": "./results/optimization"
 }

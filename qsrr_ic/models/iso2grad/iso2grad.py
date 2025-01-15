@@ -22,7 +22,6 @@ class Iso2Grad:
     def __init__(
         self,
         qsrr_model: Any,
-        scaler: Any,
         iso2grad_data: Iso2GradData,
         iso2grad_settings: Iso2GradSettings
     ):
@@ -32,12 +31,10 @@ class Iso2Grad:
         Parameters
         ----------
         qsrr_model: Any (sklearn object), Isocratic QSRR model used for predictions
-        scaler: Any (sklearn Scaler object), Scaler used to descale the QSRR predictions
         iso2grad_data: Iso2GradData, data for fitting the iso2grad model
         iso2grad_settings: Iso2GradSettings, settings for fitting the iso2grad model
         """
         self.qsrr_model = qsrr_model
-        self.scaler = scaler
         self.iso2grad_data = iso2grad_data
         self.iso2grad_settings = iso2grad_settings
         self.results: Optional[Iso2GradResults] = None
@@ -56,8 +53,8 @@ class Iso2Grad:
         float, Predicted retention factor
         """
         input_data = np.hstack((concentration, predictors)).reshape(1, -1)
-        scaled_input = self.scaler.transform(input_data)
-        log_k = self.qsrr_model.predict(scaled_input)
+        scaled_input = self.qsrr_model.scaler.transform(input_data)
+        log_k = self.qsrr_model.model.predict(scaled_input)
         return 10 ** log_k
 
     @staticmethod
