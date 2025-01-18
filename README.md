@@ -1,4 +1,4 @@
-**QSRR in IC repositoriy**
+**QSRR in IC repository**
 
 Code, examples, data & results for the paper:
 
