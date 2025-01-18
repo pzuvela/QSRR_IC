@@ -1,15 +1,8 @@
-"""
+**QSRR in IC repositoriy**
 
-QSRR model development in IC Part IV
+Code, examples, data & results for the paper:
 
-Required packages:
-1) Numpy
-2) Pandas
-3) Scipy
-4) scikit-learn
-5) xgBoost
+Gradient retention time modelling in ion chromatoraphy through ensemble learning-powered quantitative structure-retention relationships
 
 Usage:
-main.py max_iter count proc_i method opt_prompt n_splits (optional)
-
-"""
+python -m qsrr_ic -f config.json

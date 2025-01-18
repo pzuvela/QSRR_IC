@@ -1,245 +1,223 @@
-"""
+import os
+import sys
+import pickle
+from typing import (
+    Dict,
+    List,
+    Optional
+)
 
-QSRR model development in IC Part IV project
+import numpy as np
 
-Required packages:
-1) Numpy
-2) Pandas
-3) Scipy
-4) scikit-learn
-5) xgBoost
+from qsrr_ic.arg_parser import get_args
+from qsrr_ic.analysis.srd import SumOfRankingDifferences
+from qsrr_ic.config import QsrrIcConfig, HyperParameterConfig
+from qsrr_ic.enums import (
+    RegressorType,
+    TrainingType
+)
+from qsrr_ic.load import (
+    load_dataset,
+    QsrrIcData,
+    QsrrIcDataset
+)
+from qsrr_ic.models.iso2grad import Iso2Grad
+from qsrr_ic.models.iso2grad.domain_models import Iso2GradSettings, Iso2GradData
+from qsrr_ic.models.qsrr import QsrrModel
+from qsrr_ic.models.qsrr.domain_models import QsrrData
+from qsrr_ic.optimization import QsrrModelOptimizer
+from qsrr_ic.optimization.domain_models import (
+    OptimizerSettings,
+    OptimizerResults
+)
+from qsrr_ic.process import ProcessData
+from qsrr_ic.runners import (
+    QsrrModelRunner,
+    QsrrResamplingWithReplacementModelRunner,
+    QsrrOptimizerRunner,
+    QsrrIcModelRunner
+)
 
-Usage:
-main.py max_iter count proc_i method opt_prompt n_splits (optional)
 
-"""
-from os import getcwd, makedirs
-from os.path import exists
-from sys import argv, stdout
-from time import time, strftime, gmtime
-from datetime import datetime
-from pandas import read_csv, DataFrame
-from numpy import genfromtxt
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-from multiprocessing import Pool
-from qsrr_ic.models.iso2grad import ig_model as ig
+def main(
+    config_path: Optional[str] = None,
+    config: Optional[QsrrIcConfig] = None
+):
 
-""" Fixed variables 
+    if config_path is None and config is None:
+        raise ValueError("Either config path or an instance of QsrrIcConfig class should be passed!")
 
-Input arguments:
-1) max_iter     : number of iterations
-2) count        : run count (necessary if some parallel runs finish at the same time)
-3) proc_i       : number of processes
-4) method       : regression method (currently implemented: xgb, gbr, pls)
-5) opt_prompt   : prompt for optimization of hyper-parameters (yes, no, default: no)
-6) n_splits     : number of cross-validation splits (for optimization, if opt_prompt is no, then n_splits is [])
+    # 1. Read settings
+    if config is None:
+        config: QsrrIcConfig = QsrrIcConfig.from_json(config_path)
 
-"""
+    # 2. Load dataset
+    dataset: QsrrIcDataset = load_dataset(config.dataset_config)
 
-# TODO: Add assertions of the arguments
-# Show usage if no arguments are passed to the file and define variables from the input arguments
-max_iter, count, proc_i, method, opt_prompt = (int(argv[1]), int(argv[2]), int(argv[3]), str(argv[4]), str(argv[5])) \
-    if len(argv) > 1 else exit('Usage: python main.py max_iter count proc_i method opt_prompt n_splits')
+    # 3. Process dataset for training
+    data: QsrrIcData = ProcessData(dataset).process()
 
-n_splits = int(argv[6]) if opt_prompt == "yes" else []
+    # 4. Prepare & split QSRR data to train/test
+    qsrr_data: QsrrData = QsrrData(
+        y=data.isocratic_retention,
+        x=data.molecular_descriptors_for_qsrr_training
+    )
+    qsrr_train_data, qsrr_test_data = qsrr_data.split(config.train_test_split_config)
 
-# Make sure that method is 'xgb', 'gbr', 'pls', 'rfr', or 'ada'
-assert method in ['xgb', 'gbr', 'pls', 'rfr', 'ada'], \
-    '# Please enter either \'xgb\', \'gbr'', \'ada\', \'rfr\', or \'pls\' !'
+    # 5. Train QSRR models
 
-# Directories
-curr_dir = getcwd()
-data_dir, results_dir = curr_dir + '/data/', curr_dir + '/results/' + method + '/'
+    qsrr_models: Dict[RegressorType, QsrrModel] = {}
 
-# Create the results directory if it does not exist
-makedirs(results_dir) if not exists(results_dir) else []
+    hyper_parameter_configs: Dict[RegressorType, HyperParameterConfig] = {}
 
-""" 
-Loading data into Pandas DataFrames & Numpy arrays:
-1) IC data for QSRR model building (at all experimental isocratic concentrations) 
-2) Gradient profiles
-3) Void times
-4) Isocratic data for all the analytes (without c(eluent), that is approximated using the iso2grad model)
-5) Experimental gradient retention times
-"""
-# IC data for QSRR
-raw_data = read_csv(data_dir + '2019-QSRR_in_IC_Part_IV_data_latest.csv')
+    for regressor_type, hyper_parameter_config in config.hyper_parameter_config.items():
 
-# Gradient profiles
-grad_data = genfromtxt(data_dir + 'grad_data.csv', delimiter=',')
+        if config.training_type == TrainingType.Optimization:
 
-# Void times
-t_void = genfromtxt(data_dir + 't_void.csv', delimiter=',')
+            # Optimization Mode
+            optimizer_settings = OptimizerSettings(
+                regressor_type,
+                hyper_parameter_config.hyper_parameter_registry,
+                cv_settings=config.cross_validation_config.cv_settings,
+                global_search_settings=config.global_search_config.global_search_settings
+            )
 
-# Isocratic data for all the analytes
-iso_data = genfromtxt(data_dir + 'iso_data.csv', delimiter=',')
+            optimizer_runner = QsrrOptimizerRunner()
 
-# Gradient retention times
-tg_exp = genfromtxt(data_dir + 'tg_data.csv', delimiter=',')
+            optimizer: QsrrModelOptimizer
+            optimizer_results: OptimizerResults
 
-""" Initial data processing """
-# Drop rows with logk values of 0.000 (relative errors cannot be computed for these)
-raw_data.drop(raw_data[raw_data['logk'] == 0.000].index, inplace=True)
+            optimizer, optimizer_results = optimizer_runner.run(
+                optimizer_settings=optimizer_settings,
+                qsrr_train_data=qsrr_train_data,
+                qsrr_test_data=qsrr_test_data
+            )
 
-# Drop retention times and logk values sto generate the x_data matrix, define y_data and ravel it into a vector
-x_data, y_data = raw_data.drop(['tR', 'logk'], axis=1), raw_data[['logk']].values.ravel()
+            qsrr_models[regressor_type] = optimizer_results.optimal_qsrr_model
+            hyper_parameter_configs[regressor_type] = HyperParameterConfig(
+                regressor_type=regressor_type,
+                hyper_parameter_registry=optimizer_results.optimal_hyper_parameters
+            )
 
-""" 
------------------ (Hyper-)parameter optimization -----------------
-"""
-# Optimization conditional
-if opt_prompt == 'yes':
+        elif config.training_type == TrainingType.SingleTrain:
 
-    # Randomly split the data into training and testing
-    x_train_unscaled_opt, x_test_unscaled_opt, y_train_opt, y_test_opt = train_test_split(
-        x_data, y_data,
-        test_size=0.3,
-        shuffle=True
+            # Single Training Mode
+
+            model_runner = QsrrModelRunner()
+
+            model: QsrrModel = model_runner.run(
+                regressor_type=regressor_type,
+                qsrr_train_data=qsrr_train_data,
+                qsrr_test_data=qsrr_test_data,
+                config=hyper_parameter_config
+            )
+
+            qsrr_models[regressor_type] = model
+            hyper_parameter_configs[regressor_type] = hyper_parameter_config
+
+    # 6. Train IC models
+    ic_models: Dict[RegressorType, Iso2Grad] = {}
+
+    iso2grad_settings = Iso2GradSettings()
+    iso2grad_data = Iso2GradData(
+        isocratic_model_predictors=data.molecular_descriptors_for_iso2grad,
+        gradient_void_times=data.gradient_void_times,
+        gradient_retention_profiles=data.gradient_profiles
     )
 
-    # Define a scaling object
-    sc_opt = StandardScaler()
+    for regressor_type, qsrr_model_ in qsrr_models.items():
+        runner = QsrrIcModelRunner()
+        ic_model = runner.run(
+            qsrr_model=qsrr_model_,
+            iso2grad_data=iso2grad_data,
+            iso2grad_settings=iso2grad_settings
+        )
+        ic_models[regressor_type] = ic_model
 
-    # Scale the training data and save the mean & std into the object "sc"
-    x_train_opt = DataFrame(sc_opt.fit_transform(x_train_unscaled_opt), columns=x_test_unscaled_opt.columns).values
+    # 7. Resampling with replacement
 
-    # Scale the testing data (using the training mean & std)
-    x_test_opt = DataFrame(sc_opt.transform(x_test_unscaled_opt), columns=x_test_unscaled_opt.columns).values
+    # QSRR Models
+    bootstrapped_qsrr_models: Dict[RegressorType, List[QsrrModel]] = {}
 
-    # Scale all of the data (using the training mean & std)
-    x_data_opt = DataFrame(sc_opt.transform(x_data), columns=x_data.columns).values
+    if config.resampling_with_replacement_config is not None \
+        and config.resampling_with_replacement_config.use_resampling:
 
-    # Import the optimization function from the "regr" module
-    from src.modules.modelling.regr import RegressionHyperParamOpt
+        for regressor_type, hyper_parameter_config in hyper_parameter_configs.items():
+            model_runner = QsrrResamplingWithReplacementModelRunner()
+            bootstrapped_qsrr_models[regressor_type] = model_runner.run(
+                regressor_type=regressor_type,
+                config=config.resampling_with_replacement_config,
+                hyper_parameter_config=hyper_parameter_config,
+                train_test_config=config.train_test_split_config,
+                qsrr_data=qsrr_data
+            )
 
-    # Optimization of (hyper-)parameters
-    RegressionHyperParamOpt = RegressionHyperParamOpt(method, x_train_opt, y_train_opt, x_test_opt, y_test_opt,
-                                                      n_splits, proc_i, results_dir, count).optimize()
-    reg_params = RegressionHyperParamOpt.params_final
+    # IC Models
+    bootstrapped_ic_models: Dict[RegressorType, List[Iso2Grad]] = {}
 
-else:
+    for regressor_type, qsrr_models_ in bootstrapped_qsrr_models.items():
 
-    # List of optimized parameters (updated with new optimized values for ADA & RFR)
-    reg_params_list = [{'n_estimators': 497, 'learning_rate': 0.23, 'max_depth': 2},
-                       {'n_estimators': 485, 'learning_rate': 0.23, 'max_depth': 2}, {'n_components': 4},
-                       {'n_estimators': 150, 'max_depth': 15, 'min_samples_leaf': 1},
-                       {'n_estimators': 676, 'learning_rate': 0.1284015, 'loss': 'exponential'}]  # Testicle
+        bootstrapped_ic_models[regressor_type] = []
 
-    # Default parameter conditionals
-    reg_params = reg_params_list[0] if method == 'xgb' else reg_params_list[1] if method == 'gbr' \
-        else reg_params_list[3] if method == 'rfr' else reg_params_list[4] if method == 'ada' \
-        else reg_params_list[2] if method == 'pls' else []
+        for qsrr_model_ in qsrr_models_:
 
+            runner = QsrrIcModelRunner()
 
-""" 
------------------ Resampling with replacement -----------------
-"""
+            ic_model = runner.run(
+                qsrr_model=qsrr_model_,
+                iso2grad_data=iso2grad_data,
+                iso2grad_settings=iso2grad_settings
+            )
 
+            bootstrapped_ic_models[regressor_type].append(ic_model)
 
-# Defining a function to feed to multiprocessing
-def model_parallel(arg_iter):
+    # 8. Analyze
 
-    # Random seed
-    rnd_state = (count * max_iter) + (arg_iter[0] + 1)
+    # Calculate SRD for QSRR models
+    qsrr_srds: Dict[RegressorType, List[SumOfRankingDifferences]] = {}
 
-    # Randomly split the data into training and testing
-    x_train_unscaled_par, x_test_unscaled_par, y_train_par, y_test_par = train_test_split(x_data, y_data, test_size=0.3,
-                                                                                          shuffle=True,
-                                                                                          random_state=rnd_state)
+    for regressor_type, qsrr_models_ in bootstrapped_qsrr_models.items():
 
-    # Define a scaling object
-    sc_par = StandardScaler()
+        qsrr_srds[regressor_type] = []
 
-    # Scale the training data and save the mean & std into the object "sc"
-    x_train_par = DataFrame(sc_par.fit_transform(x_train_unscaled_par), columns=x_train_unscaled_par.columns).values
+        for qsrr_model_ in qsrr_models_:
 
-    # Scale the testing data (using the training mean & std)
-    x_test_par = DataFrame(sc_par.transform(x_test_unscaled_par), columns=x_test_unscaled_par.columns).values
+            srd = SumOfRankingDifferences(
+                inputs=np.vstack(
+                    (qsrr_model_.train_results.qsrr_predictions.y, qsrr_model_.test_results.qsrr_predictions.y)
+                ),
+                golden_reference=np.vstack(
+                    (qsrr_model_.qsrr_train_data.y, qsrr_model_.qsrr_test_data.y)
+                )
+            )
+            qsrr_srds[regressor_type].append(srd)
 
-    # Scale all of the data (using the training mean & std)
-    x_data_par = DataFrame(sc_par.transform(x_data), columns=x_data.columns).values
+    # Calculate SRD for IC models
+    ic_srds: Dict[RegressorType, List[SumOfRankingDifferences]] = {}
 
-    # Import the RegressorsQSRR class
-    from src.modules.modelling.regr import RegressorsQSRR
+    for regressor_type, ic_models_ in bootstrapped_ic_models.items():
 
-    # Instantiate the RegressorsQSRR class with data and run the regress() method
-    reg = RegressorsQSRR(method, [x_train_par, x_test_par, y_train_par, y_test_par], reg_params).regress()
+        ic_srds[regressor_type] = []
 
-    # Print percentage of explained variance if model is PLS
-    cum_r2_i = reg.perc_var().r2_all if method == 'pls' else None
+        for ic_model_ in ic_models_:
 
-    # Predict y-values using the model
-    y_data_hat_par = reg.model.predict(x_data_par).ravel()
+            srd = SumOfRankingDifferences(
+                inputs=ic_model_.results.gradient_retention_times,
+                golden_reference=data.gradient_retention
+            )
 
-    # Run the metrics() method to calculate the values of the model metrics
-    reg = reg.metrics()
+            ic_srds[regressor_type].append(srd)
 
-    # Predicted gradient retention times
-    tg_total = ig(reg, iso_data, t_void, grad_data, sc_par).flatten(order='F')
+    # 8. Save results
+    with open(os.path.join(config.results_path, "bootstrapped_qsrr_models.pkl"), "wb") as f:
+        pickle.dump(bootstrapped_qsrr_models, f)
 
-    # Gradient retention time errors
-    _, _, rmse_grad_par = reg.get_errors(tg_exp, tg_total)
+    with open(os.path.join(config.results_path, "bootstrapped_ic_models.pkl"), "wb") as f:
+        pickle.dump(bootstrapped_ic_models, f)
 
-    # Completion of iterations
-    print('Iteration #{}/{} completed'.format(arg_iter[0] + 1, max_iter))
+    with open(os.path.join(config.results_path, "qsrr_srds.pkl"), "wb") as f:
+        pickle.dump(qsrr_srds, f)
 
-    # Flush the output buffer // fix the logging issues
-    stdout.flush()
+    with open(os.path.join(config.results_path, "ic_srds.pkl"), "wb") as f:
+        pickle.dump(ic_srds, f)
 
-    return reg.rmse_train, reg.rmse_test, y_data, y_data_hat_par, rmse_grad_par, tg_exp, tg_total, cum_r2_i
-
-
-# Main section
-if __name__ == '__main__':
-    # Display initialization and initialize start time
-    print('Initiating with {} iterations'.format(max_iter))
-    start_time = time()
-
-    # Start Parallel Pool with "proc_i" processes
-    p = Pool(processes=proc_i)
-
-    # Run the model_parallel function for max_iter times
-    models_final = p.map(model_parallel, zip(range(max_iter)))
-
-    # Training and testing isocratic RMSE & gradient RMSE
-    rmse_iso, rmse_grad = [models_final[i][:2] for i in range(max_iter)], [models_final[i][4] for i in range(max_iter)]
-
-    # True and predicted isocratic & gradient retention times
-    y_true, y_pred, tg_true, tg_pred = models_final[0][2], [models_final[i][3] for i in range(max_iter)], \
-        models_final[0][5], [models_final[i][6] for i in range(max_iter)]
-
-    # Percentage of cumulative explained variance for PLS
-    cum_r2_all = [models_final[i][7] for i in range(max_iter)] if method == 'pls' else None
-
-    # Save the distribution of isocratic retention time errors
-    DataFrame(rmse_iso, columns=['rmsre_train', 'rmsre_test']).to_csv(results_dir + '2019-QSRR_IC_PartIV-{}_{}_errors_'
-                                                                                    'iso_{}_iters_run_{}.csv'.
-                                                                      format(datetime.now().strftime('%d_%m_%Y-%H_%M'),
-                                                                             method, max_iter, count), header=True)
-
-    # Save predicted isocratic retention times
-    DataFrame(y_pred).to_csv(results_dir + '2019-QSRR_IC_PartIV-{}_{}_logk_iso_{}_iters_run_{}.csv'
-                             .format(datetime.now().strftime('%d_%m_%Y-%H_%M'), method, max_iter, count), header=True)
-
-    # Save the distribution of gradient retention time errors
-    DataFrame(rmse_grad, columns=['rmsre_grad']).to_csv(
-        results_dir + '2019-QSRR_IC_PartIV-{}_{}_errors_grad_{}_iters_run_{}.csv'.format(
-            datetime.now().strftime('%d_%m_%Y-%H_%M'), method, max_iter, count), header=True)
-
-    # Save predicted gradient retention times
-    DataFrame(tg_pred).to_csv(results_dir + '2019-QSRR_IC_PartIV-{}_{}_tR_grad_{}_iters_run_{}.csv'
-                              .format(datetime.now().strftime('%d_%m_%Y-%H_%M'), method, max_iter, count), header=True)
-
-    # Save percentage of cumulative explained variance for PLS
-    DataFrame(cum_r2_all, columns=['R2X', 'R2Y']).to_csv(
-        results_dir + '2019-QSRR_IC_PartIV-{}_{}_iso_perc_var_{}_iters_run_{}.csv'.format(
-            datetime.now().strftime('%d_%m_%Y-%H_%M'), method, max_iter, count), header=True) if method == 'pls' \
-        else None
-
-    # Compute and display run-time
-    run_time = time() - start_time
-
-    # Exit flag
-    print('Calculations completed successfully !\nRun-time: {}\n'.format(strftime("%H:%M:%S", gmtime(run_time))))
-    exit('Success !')

@@ -3,7 +3,7 @@
         "molecular_descriptors_for_qsrr_training_path": "./datasets/qsrr_ic/2025-01-05-molecular_descriptors_for_qsrr_training.csv",
         "isocratic_retention_path":  "./datasets/qsrr_ic/2025-01-05-isocratic_retention.csv",
         "molecular_descriptors_for_iso2grad_path": "./datasets/qsrr_ic/2025-01-05-molecular_descriptors_for_iso2grad.csv",
-        "gradient_void_times_path": "./datasets/qsrr_ic/2025-01-05-molecular_descriptors_for_iso2grad.csv",
+        "gradient_void_times_path": "./datasets/qsrr_ic/2025-01-05-gradient_void_times.csv",
         "gradient_profiles_path": "./datasets/qsrr_ic/2025-01-05-gradient_profiles.csv",
         "gradient_retention_path": "./datasets/qsrr_ic/2025-01-05-gradient_retention.csv"
     },

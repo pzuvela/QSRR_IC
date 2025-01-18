@@ -17,9 +17,6 @@ class ProcessData:
 
     @staticmethod
     def _process_data(data: DataFrame, columns_to_remove: Set[str]) -> ndarray:
-        missing_columns = columns_to_remove - set(data.columns)
-        if missing_columns:
-            raise ValueError(f"Missing required columns: {', '.join(missing_columns)}")
 
         # Dropping the columns to remove
         processed_data = data.drop(columns=columns_to_remove, errors="ignore")  # noqa (false alarm - errors="ignore")
@@ -41,7 +38,7 @@ class ProcessData:
     def _process_gradient_void_times(self) -> ndarray:
         return self._process_data(
             self.qsrr_ic_dataset.gradient_void_times_df,
-            {QsrrIcConstants.GRADIENT_PROFILE}
+            {QsrrIcConstants.ANALYTE, QsrrIcConstants.GRADIENT_PROFILE}
         )
 
     def process(self) -> QsrrIcData:

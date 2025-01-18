@@ -14,6 +14,7 @@ from qsrr_ic.analysis.srd.enums import (
     GoldenReference,
     GOLDEN_REFERENCE_FUN_MAPPING
 )
+from qsrr_ic.error_handling import ErrorHandling
 
 
 EXACT_ROW_LIMIT: int = 10
@@ -75,19 +76,6 @@ class SumOfRankingDifferences:
         self.__random_srds: Optional[ndarray] = None
         self.__normalized_random_srds: Optional[ndarray] = None
 
-    @staticmethod
-    def get_property_value_error(property_name: str) -> "ValueError":
-        """
-        Constructs a ValueError for read-only properties.
-
-        Args:
-            property_name (str): The name of the property.
-
-        Returns:
-            ValueError: Error indicating the property is read-only.
-        """
-        return ValueError(f"{property_name} is read-only and cannot be set directly.")
-
     @property
     def golden_reference(self) -> ndarray:
         """
@@ -100,7 +88,7 @@ class SumOfRankingDifferences:
 
     @golden_reference.setter
     def golden_reference(self, value: ndarray) -> None:
-        raise self.get_property_value_error("Golden Reference")
+        raise ErrorHandling.get_property_value_error("Golden Reference")
 
     @property
     def golden_ranking(self) -> ndarray:
@@ -116,7 +104,7 @@ class SumOfRankingDifferences:
 
     @golden_ranking.setter
     def golden_ranking(self, value: ndarray) -> None:
-        raise self.get_property_value_error("Golden Ranking")
+        raise ErrorHandling.get_property_value_error("Golden Ranking")
 
     @property
     def ideal_ranking(self) -> ndarray:
@@ -132,7 +120,7 @@ class SumOfRankingDifferences:
 
     @ideal_ranking.setter
     def ideal_ranking(self, value: ndarray) -> None:
-        raise self.get_property_value_error("Ideal Ranking")
+        raise ErrorHandling.get_property_value_error("Ideal Ranking")
 
     @property
     def srd_max(self) -> float:
@@ -153,7 +141,7 @@ class SumOfRankingDifferences:
 
     @srd_max.setter
     def srd_max(self, value: float) -> None:
-        raise self.get_property_value_error("SRD(max)")
+        raise ErrorHandling.get_property_value_error("SRD(max)")
 
     @property
     def srds(self) -> ndarray:
@@ -169,7 +157,7 @@ class SumOfRankingDifferences:
 
     @srds.setter
     def srds(self, value: ndarray) -> None:
-        raise self.get_property_value_error("SRD values")
+        raise ErrorHandling.get_property_value_error("SRD values")
 
     @property
     def normalized_srds(self) -> ndarray:
@@ -185,7 +173,7 @@ class SumOfRankingDifferences:
 
     @normalized_srds.setter
     def normalized_srds(self, value: ndarray) -> None:
-        raise self.get_property_value_error("Normalized SRD values")
+        raise ErrorHandling.get_property_value_error("Normalized SRD values")
 
     @property
     def random_srds(self):
@@ -201,7 +189,7 @@ class SumOfRankingDifferences:
 
     @random_srds.setter
     def random_srds(self, value: ndarray) -> None:
-        raise self.get_property_value_error("Random SRD values")
+        raise ErrorHandling.get_property_value_error("Random SRD values")
 
     @property
     def normalized_random_srds(self):
@@ -217,7 +205,7 @@ class SumOfRankingDifferences:
 
     @normalized_random_srds.setter
     def normalized_random_srds(self, value: ndarray) -> None:
-        raise self.get_property_value_error("Normalized Random SRD values")
+        raise ErrorHandling.get_property_value_error("Normalized Random SRD values")
 
     @staticmethod
     def _validate_golden(golden_reference):
