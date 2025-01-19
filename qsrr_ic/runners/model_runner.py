@@ -17,13 +17,11 @@ from qsrr_ic.config import (
     HyperParameterConfig,
     ResamplingWithReplacementConfig, TrainTestSplitConfig
 )
+from qsrr_ic.domain_models import Iso2GradSettings
 from qsrr_ic.enums import RegressorType
 from qsrr_ic.models.qsrr.domain_models import QsrrData
 from qsrr_ic.models.iso2grad import Iso2Grad
-from qsrr_ic.models.iso2grad.domain_models import (
-    Iso2GradSettings,
-    Iso2GradData
-)
+from qsrr_ic.models.iso2grad.domain_models import Iso2GradData
 from qsrr_ic.models.qsrr import QsrrModel
 from qsrr_ic.optimization.domain_models import OptimizerSettings
 from qsrr_ic.optimization import QsrrModelOptimizer

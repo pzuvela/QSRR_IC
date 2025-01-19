@@ -9,15 +9,13 @@ import numpy as np
 import pandas as pd
 
 from qsrr_ic.enums import RegressorType
+from qsrr_ic.domain_models import Iso2GradSettings
 from qsrr_ic.load import (
     QsrrIcDataset,
     QsrrIcData
 )
 from qsrr_ic.models.iso2grad import Iso2Grad
-from qsrr_ic.models.iso2grad.domain_models import (
-    Iso2GradData,
-    Iso2GradSettings
-)
+from qsrr_ic.models.iso2grad.domain_models import Iso2GradData
 from qsrr_ic.models.qsrr import QsrrModel
 from qsrr_ic.models.qsrr.domain_models import QsrrData
 from qsrr_ic.process import ProcessData

@@ -76,7 +76,7 @@ class QsrrModel:
         Train the QSRR model using the provided training data.
         """
         try:
-            self.model.fit(self.scaler.transform(self.qsrr_train_data.x), self.qsrr_train_data.y)
+            self.model.fit(self.scaler.transform(self.qsrr_train_data.x), self.qsrr_train_data.y.ravel())
         except Exception as e:
             raise RuntimeError(f"An error occurred while fitting the model: {e}")
 
@@ -125,7 +125,7 @@ class QsrrModel:
         raise ValueError("PLS R2 cannot be set!")
 
     def _calculate_results(self, data: QsrrData) -> QsrrResults:
-        predictions = self.model.predict(self.scaler.transform(data.x)).ravel()
+        predictions = self.model.predict(self.scaler.transform(data.x)).reshape(-1, 1)
         qsrr_predictions = QsrrData(y=predictions)
         qsrr_metrics = QsrrMetrics(qsrr_data=data, qsrr_predictions=qsrr_predictions)
         return QsrrResults(qsrr_predictions=qsrr_predictions, qsrr_metrics=qsrr_metrics)

@@ -11,10 +11,14 @@ from joblib import (
     Parallel
 )
 
+from qsrr_ic.domain_models import Iso2GradSettings
 from qsrr_ic.models.iso2grad.domain_models import (
     Iso2GradData,
-    Iso2GradResults,
-    Iso2GradSettings
+    Iso2GradResults
+)
+from qsrr_ic.models.qsrr.domain_models import (
+    QsrrData,
+    QsrrMetrics
 )
 
 
@@ -194,5 +198,18 @@ class Iso2Grad:
             for profile_idx in range(self.iso2grad_data.gradient_retention_profiles.shape[0])
         )
 
+        gradient_retention_times_ = np.vstack(gradient_retention_times)
+
+        metrics = None
+
+        if self.iso2grad_data.gradient_retention_times is not None:
+            metrics = QsrrMetrics(
+                qsrr_data=QsrrData(y=self.iso2grad_data.gradient_retention_times, x=None),
+                qsrr_predictions=QsrrData(y=gradient_retention_times_, x=None)
+            )
+
         # Stack the results and store in results
-        self.results = Iso2GradResults(np.vstack(gradient_retention_times))
+        self.results = Iso2GradResults(
+            gradient_retention_times=gradient_retention_times_,
+            metrics=metrics
+        )

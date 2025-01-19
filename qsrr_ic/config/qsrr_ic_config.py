@@ -7,6 +7,7 @@ from typing import (
 from qsrr_ic.analysis.srd.domain_models import SrdSettings
 from qsrr_ic.domain_models import (
     CrossValidationSettings,
+    Iso2GradSettings,
     GlobalSearchSettings,
     HyperParameter,
     HyperParameterRange,
@@ -18,8 +19,6 @@ from qsrr_ic.enums import (
     RegressorType,
     TrainingType
 )
-from qsrr_ic.models.iso2grad.domain_models import Iso2GradSettings
-
 
 default_pls_hps = HyperParameterRegistry()
 default_pls_hps.add(HyperParameterName.N_COMPONENTS, HyperParameterRange(HyperParameter(1), HyperParameter(10)))

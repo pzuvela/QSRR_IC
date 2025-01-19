@@ -1,6 +1,6 @@
 import os
-import sys
 import pickle
+from datetime import datetime
 from typing import (
     Dict,
     List,
@@ -9,9 +9,11 @@ from typing import (
 
 import numpy as np
 
-from qsrr_ic.arg_parser import get_args
 from qsrr_ic.analysis.srd import SumOfRankingDifferences
-from qsrr_ic.config import QsrrIcConfig, HyperParameterConfig
+from qsrr_ic.config import (
+    HyperParameterConfig,
+    QsrrIcConfig
+)
 from qsrr_ic.enums import (
     RegressorType,
     TrainingType
@@ -22,7 +24,7 @@ from qsrr_ic.load import (
     QsrrIcDataset
 )
 from qsrr_ic.models.iso2grad import Iso2Grad
-from qsrr_ic.models.iso2grad.domain_models import Iso2GradSettings, Iso2GradData
+from qsrr_ic.models.iso2grad.domain_models import Iso2GradData
 from qsrr_ic.models.qsrr import QsrrModel
 from qsrr_ic.models.qsrr.domain_models import QsrrData
 from qsrr_ic.optimization import QsrrModelOptimizer
@@ -118,11 +120,12 @@ def main(
     # 6. Train IC models
     ic_models: Dict[RegressorType, Iso2Grad] = {}
 
-    iso2grad_settings = Iso2GradSettings()
+    iso2grad_settings = config.iso2grad_config.iso2grad_settings
     iso2grad_data = Iso2GradData(
         isocratic_model_predictors=data.molecular_descriptors_for_iso2grad,
         gradient_void_times=data.gradient_void_times,
-        gradient_retention_profiles=data.gradient_profiles
+        gradient_retention_profiles=data.gradient_profiles,
+        gradient_retention_times=data.gradient_retention
     )
 
     for regressor_type, qsrr_model_ in qsrr_models.items():
@@ -209,15 +212,19 @@ def main(
             ic_srds[regressor_type].append(srd)
 
     # 8. Save results
-    with open(os.path.join(config.results_path, "bootstrapped_qsrr_models.pkl"), "wb") as f:
+
+    now = datetime.now()
+
+    date_string: str = f"{now.strftime('%y%m%d_%H%S-')}"
+
+    with open(os.path.join(config.results_path, f"{date_string}bootstrapped_qsrr_models.pkl"), "wb") as f:
         pickle.dump(bootstrapped_qsrr_models, f)
 
-    with open(os.path.join(config.results_path, "bootstrapped_ic_models.pkl"), "wb") as f:
+    with open(os.path.join(config.results_path, f"{date_string}bootstrapped_ic_models.pkl"), "wb") as f:
         pickle.dump(bootstrapped_ic_models, f)
 
-    with open(os.path.join(config.results_path, "qsrr_srds.pkl"), "wb") as f:
+    with open(os.path.join(config.results_path, f"{date_string}qsrr_srds.pkl"), "wb") as f:
         pickle.dump(qsrr_srds, f)
 
-    with open(os.path.join(config.results_path, "ic_srds.pkl"), "wb") as f:
+    with open(os.path.join(config.results_path, f"{date_string}ic_srds.pkl"), "wb") as f:
         pickle.dump(ic_srds, f)
-
