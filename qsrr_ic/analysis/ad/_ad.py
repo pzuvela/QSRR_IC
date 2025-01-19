@@ -1,31 +1,14 @@
 from typing import (
-    Optional,
-    Tuple
+    Tuple,
+    Optional
 )
-
-from dataclasses import dataclass
 
 import numpy as np
 from numpy import ndarray
 
-import pandas as pd
-
-import matplotlib.pyplot as plt
-
+from qsrr_ic.analysis.ad.domain_models import ApplicabilityDomainData
 from qsrr_ic.error_handling import ErrorHandling
-from qsrr_ic.models.qsrr.domain_models import QsrrData
 
-
-@dataclass
-class ApplicabilityDomainData:
-    """
-    Data class for encapsulating input data and related parameters for WilliamsModel.
-    """
-
-    data_train: QsrrData  # Training data (descriptors, retention)
-    data_test: Optional[QsrrData]  # Test data (descriptors, retention), optional
-    predictions_train: QsrrData  # Training predictions
-    predictions_train: Optional[QsrrData]  # Test predictions
 
 
 class ApplicabilityDomain:
@@ -41,16 +24,25 @@ class ApplicabilityDomain:
             data (ApplicabilityDomainData): The input data and parameters for the model.
         """
         self.__data: ApplicabilityDomainData = data
+
+        self.__h_core: Optional[ndarray] = None
+
         self.__hat_matrix_train: Optional[ndarray] = None
         self.__hat_matrix_test: Optional[ndarray] = None
+
         self.__residuals_train: Optional[ndarray] = None
         self.__residuals_test: Optional[ndarray] = None
+
+        self.__residual_std: Optional[float] = None
+        self.__std_residuals_train: Optional[ndarray] = None
+        self.__std_residuals_test: Optional[ndarray] = None
+
         self.__critical_hat = None
 
     @property
     def hat_matrix_train(self) -> ndarray:
         if self.__hat_matrix_train is None:
-            self.__hat_matrix_train = self._compute_hat_matrix()
+            self.__hat_matrix_train = self._compute_hat_matrix(x=self.__data.data_train.x)
         return self.__hat_matrix_train
 
     @hat_matrix_train.setter
@@ -60,22 +52,38 @@ class ApplicabilityDomain:
     @property
     def hat_matrix_test(self) -> Optional[ndarray]:
         if self.__hat_matrix_test is None and self.__data.data_test is not None:
-            self.__hat_matrix_train = self._compute_hat_matrix()
-        return self.__hat_matrix_train
+            self.__hat_matrix_test = self._compute_hat_matrix(x=self.__data.data_test.x)
+        return self.__hat_matrix_test
 
-    @hat_matrix_train.setter
-    def hat_matrix_train(self, value):
-        raise ErrorHandling.get_property_value_error("hat_matrix_train")
+    @hat_matrix_test.setter
+    def hat_matrix_test(self, value):
+        raise ErrorHandling.get_property_value_error("hat_matrix_test")
 
     @property
-    def residuals(self) -> Tuple[ndarray, Optional[ndarray]]:
-        if self.__residuals is None:
-            self.__residuals = self._compute_residuals()
-        return self.__residuals
+    def residuals_train(self) -> ndarray:
+        if self.__residuals_train is None:
+            self.__residuals_train = self._compute_residuals(
+                self.__data.data_train.y,
+                self.__data.predictions_train.y
+            )
+        return self.__residuals_train
 
-    @residuals.setter
-    def residuals(self, value):
-        raise ErrorHandling.get_property_value_error("residuals")
+    @residuals_train.setter
+    def residuals_train(self, value):
+        raise ErrorHandling.get_property_value_error("residuals_train")
+
+    @property
+    def residuals_test(self) -> Optional[ndarray]:
+        if self.__residuals_test is None and self.__data.data_test is not None and self.__data.predictions_test is not None:
+            self.__residuals_test = self._compute_residuals(
+                self.__data.data_test.y,
+                self.__data.predictions_test.y
+            )
+        return self.__residuals_test
+
+    @residuals_test.setter
+    def residuals_test(self, value):
+        raise ErrorHandling.get_property_value_error("residuals_test")
 
     @property
     def critical_hat(self) -> float:
@@ -87,37 +95,69 @@ class ApplicabilityDomain:
     def critical_hat(self, value):
         raise ErrorHandling.get_property_value_error("critical_hat")
 
-    def _compute_hat_matrix(self) -> Tuple[ndarray, Optional[ndarray]]:
+    @property
+    def _h_core(self):
+        if self.__h_core is None:
+            x_train = self.__data.data_train.x
+            self.__h_core = np.linalg.pinv(np.matmul(x_train.transpose(), x_train))
+        return self.__h_core
+
+    @_h_core.setter
+    def _h_core(self, value):
+        raise ErrorHandling.get_property_value_error("_h core")
+
+    @property
+    def _residual_std(self):
+        if self.__residual_std is None:
+            self.__residual_std = np.std(self.residuals_train, ddof=1)
+        return self.__residual_std
+
+    @_residual_std.setter
+    def _residual_std(self, value):
+        raise ErrorHandling.get_property_value_error("residual std")
+
+    def _compute_hat_matrix(self, x: ndarray) -> ndarray:
         """
-        Compute the training and testing hat matrices.
+        Compute the hat matrix
 
         Returns:
-            tuple[np.ndarray, np.ndarray]: Training and testing leverages.
+            ndarray: leverages
         """
-        x1, x2 = self._data.x1, self._data.x2
-        if isinstance(x1, pd.DataFrame):
-            x1 = x1.values
-            x2 = x2.values
-        h_core = np.linalg.pinv(np.matmul(np.transpose(x1), x1))  # Core of the hat matrix
-        h1_work = np.matmul(np.matmul(x1, h_core), np.transpose(x1))  # Training hat matrix
-        h2_work = np.matmul(np.matmul(x2, h_core), np.transpose(x2))  # Testing hat matrix
-        h1 = np.diag(h1_work)
-        h2 = np.diag(h2_work)
-        return h1, h2
+        return np.diag(np.matmul(np.matmul(x, self._h_core), x.transpose()))
 
-    def _compute_residuals(self) -> tuple[np.ndarray, np.ndarray]:
+    @property
+    def std_residuals_train(self) -> ndarray:
+        if self.__std_residuals_train is None:
+            self.__std_residuals_train = self._standardize_residuals(self.residuals_train)
+        return self.__std_residuals_train
+
+    @std_residuals_train.setter
+    def std_residuals_train(self, value):
+        raise ErrorHandling.get_property_value_error("std_residuals_train")
+
+    @property
+    def std_residuals_test(self) -> Optional[ndarray]:
+        if self.__std_residuals_test is None and self.residuals_test is not None:
+            self.__std_residuals_test = self._standardize_residuals(self.residuals_test)
+        return self.__std_residuals_test
+
+    @std_residuals_test.setter
+    def std_residuals_test(self, value):
+        raise ErrorHandling.get_property_value_error("std_residuals_test")
+
+    @staticmethod
+    def _compute_residuals(y: ndarray, y_hat: ndarray) -> ndarray:
+        return y_hat - y
+
+    def _standardize_residuals(self, residuals: ndarray) -> ndarray:
         """
         Compute the standardized residuals.
 
         Returns:
-            tuple[np.ndarray, np.ndarray]: Training and testing residuals.
+            ndarray
         """
-        res1 = self._data.y1_hat - self._data.y1
-        res2 = self._data.y2_hat - self._data.y2
-        s1 = np.std(res1)  # Standard deviation of training residuals
-        resid1 = np.divide(res1, s1)
-        resid2 = np.divide(res2, s1)
-        return resid1, resid2
+
+        return np.divide(residuals, self._residual_std)
 
     def _compute_critical_hat_value(self) -> float:
         """
@@ -126,25 +166,42 @@ class ApplicabilityDomain:
         Returns:
             float: Critical leverage value.
         """
-        k = np.size(self._data.x1, axis=1) + 1  # Number of parameters + intercept
-        return 3 * (k / len(self._data.x1))
+        m, n = self.__data.data_train.x.shape
+        k = m + 1  # Number of parameters + intercept
+        return 3 * (k / n)
 
-    def plot_williams(self):
+
+class ApplicabilityDomainPlot:
+
+    def __init__(self, ad: ApplicabilityDomain):
+        self._ad = ad
+
+    def plot_williams(
+        self,
+        n_sigma: int = 3,
+        fig_size: Tuple[int, int] = (8, 6)
+    ):
         """
         Constructs a Williams plot with leverages and standardized residuals.
         """
-        h1, h2 = self.hat_matrix
-        r1, r2 = self.residuals
-        hat_star = self.critical_hat_value
+
+        import matplotlib.pyplot as plt  # Lazy load
 
         # Warning limit for standardized residuals
-        sigma = 3
-        plt.figure(figsize=(8, 6))
-        plt.scatter(h1, r1, c='C0', label='Training set')
-        plt.scatter(h2, r2, c='C1', label='Testing set')
-        plt.axhline(y=sigma, xmin=0, xmax=1, color='red', linestyle='dashed', label=f"±{sigma} Residual Limit")
-        plt.axhline(y=-sigma, xmin=0, xmax=1, color='red', linestyle='dashed')
-        plt.axvline(x=hat_star, ymin=-sigma, ymax=sigma, color='green', linestyle='dashed', label=f"Critical Hat Value: {hat_star:.3f}")
+        plt.figure(figsize=fig_size)
+        plt.scatter(self._ad.hat_matrix_train, self._ad.residuals_train, c='C0', label='Training set')
+        if self._ad.hat_matrix_test is not None and self._ad.residuals_test is not None:
+            plt.scatter(self._ad.hat_matrix_test, self._ad.residuals_test, c='C1', label='Testing set')
+        plt.axhline(y=n_sigma, xmin=0, xmax=1, color='red', linestyle='dashed', label=f"±{n_sigma} Residual Limit")
+        plt.axhline(y=-n_sigma, xmin=0, xmax=1, color='red', linestyle='dashed')
+        plt.axvline(
+            x=self._ad.critical_hat,
+            ymin=-n_sigma,
+            ymax=n_sigma,
+            color='green',
+            linestyle='dashed',
+            label=f"Critical Hat Value: {self._ad.critical_hat:.3f}"
+        )
         plt.xlabel("Leverage")
         plt.ylabel("Standardized Residuals")
         plt.title("Williams Plot")
