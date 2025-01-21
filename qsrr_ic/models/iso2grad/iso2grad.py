@@ -203,7 +203,7 @@ class Iso2Grad:
             for profile_idx in range(self.iso2grad_data.gradient_retention_profiles.shape[0])
         )
 
-        gradient_retention_times_ = np.hstack(gradient_retention_times)
+        gradient_retention_times_ = np.vstack(gradient_retention_times).ravel("F")
 
         metrics = None
 
