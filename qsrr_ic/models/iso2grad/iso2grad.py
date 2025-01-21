@@ -140,10 +140,14 @@ class Iso2Grad:
 
         # Loop through the gradient segments
         for p in range(0, n_profile_cols - 2, 3):
+
             ti1, conc1, slope = self.iso2grad_data.gradient_retention_profiles[profile_idx, p:p+3]
             ti2, conc2 = self.iso2grad_data.gradient_retention_profiles[profile_idx, p+3:p+5]
 
             for tg in np.arange(ti1, ti2, self.iso2grad_settings.integration_step):
+
+                print(f"Computing for tg = {tg}")
+
                 tg1, tg2 = tg, tg + self.iso2grad_settings.integration_step
 
                 # Calculate gradient concentrations at tg1 and tg2
@@ -184,6 +188,7 @@ class Iso2Grad:
         retention_times = np.zeros(n_analytes)
 
         for analyte_idx in range(n_analytes):
+            print(f"Fitting iso2grad for analyze {analyte_idx + 1}...")
             retention_times[analyte_idx] = self._process_analyte(profile_idx, analyte_idx)
 
         return retention_times
@@ -198,14 +203,14 @@ class Iso2Grad:
             for profile_idx in range(self.iso2grad_data.gradient_retention_profiles.shape[0])
         )
 
-        gradient_retention_times_ = np.vstack(gradient_retention_times)
+        gradient_retention_times_ = np.hstack(gradient_retention_times)
 
         metrics = None
 
         if self.iso2grad_data.gradient_retention_times is not None:
             metrics = QsrrMetrics(
-                qsrr_data=QsrrData(y=self.iso2grad_data.gradient_retention_times, x=None),
-                qsrr_predictions=QsrrData(y=gradient_retention_times_, x=None)
+                qsrr_data=QsrrData(y=self.iso2grad_data.gradient_retention_times.ravel(), x=None),
+                qsrr_predictions=QsrrData(y=gradient_retention_times_.ravel(), x=None)
             )
 
         # Stack the results and store in results

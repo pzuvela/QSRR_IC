@@ -1,8 +1,3 @@
-from abc import (
-    ABC,
-    abstractmethod
-)
-from threading import Lock
 from typing import (
     Any,
     Optional
@@ -13,6 +8,7 @@ from joblib import (
     Parallel
 )
 
+from qsrr_ic.base import BaseModelRunner
 from qsrr_ic.config import (
     HyperParameterConfig,
     ResamplingWithReplacementConfig, TrainTestSplitConfig
@@ -27,53 +23,7 @@ from qsrr_ic.optimization.domain_models import OptimizerSettings
 from qsrr_ic.optimization import QsrrModelOptimizer
 
 
-class ModelRunner(ABC):
-
-    _instance = None
-    _singleton_lock = Lock()
-
-    def __new__(cls):
-        """
-        Ensure only one instance of the ModelRunner exists.
-        """
-        if not cls._instance:
-            with cls._singleton_lock:
-                if not cls._instance:  # Double-checked locking
-                    cls._instance = super().__new__(cls)
-        return cls._instance
-
-    def __init__(self):
-        """
-        Initialize the runner with an execution lock.
-        """
-        if not hasattr(self, "_execution_lock"):
-            self._execution_lock = Lock()
-
-    def run(self, *args, **kwargs) -> Any:
-        """
-        Run a given model. Only one model runs at a time.
-
-        Args:
-            *args: Positional arguments to pass to the model's `run` method.
-            **kwargs: Keyword arguments to pass to the model's `run` method.
-
-        Returns:
-            Any: The result of the model's `run` method.
-
-        Raises:
-            AttributeError: If the provided model does not have a `run` method.
-        """
-
-        # Ensure exclusive access during execution
-        with self._execution_lock:
-            return self._run(*args, **kwargs)
-
-    @abstractmethod
-    def _run(self, *args, **kwargs) -> Any:
-        pass
-
-
-class QsrrModelRunner(ModelRunner):
+class QsrrModelRunner(BaseModelRunner):
     def _run(
         self,
         regressor_type: RegressorType,
@@ -91,7 +41,7 @@ class QsrrModelRunner(ModelRunner):
         return model
 
 
-class QsrrIcModelRunner(ModelRunner):
+class QsrrIcModelRunner(BaseModelRunner):
     def _run(
         self,
         qsrr_model: Any,
@@ -134,7 +84,7 @@ def _run_model(
     return model
 
 
-class QsrrResamplingWithReplacementModelRunner(ModelRunner):
+class QsrrResamplingWithReplacementModelRunner(BaseModelRunner):
     def _run(
         self,
         regressor_type: RegressorType,
@@ -154,7 +104,7 @@ class QsrrResamplingWithReplacementModelRunner(ModelRunner):
         return models
 
 
-class QsrrOptimizerRunner(ModelRunner):
+class QsrrOptimizerRunner(BaseModelRunner):
     def _run(
         self,
         optimizer_settings: OptimizerSettings,

@@ -99,7 +99,7 @@ class SumOfRankingDifferences:
             ndarray: The golden ranking.
         """
         if self.__golden_ranking is None:
-            self.__golden_ranking = np.argsort(self.golden_reference)
+            self.__golden_ranking = np.argsort(self.golden_reference, axis=0)
         return self.__golden_ranking
 
     @golden_ranking.setter
@@ -247,8 +247,14 @@ class SumOfRankingDifferences:
         Returns:
             ndarray: Computed SRD values for each column in the input data.
         """
-        final_ranking = np.argsort(np.argsort(self.inputs, axis=0), axis=0)
-        return np.sum(np.abs(final_ranking - self.ideal_ranking), axis=0)
+        final_ranking = np.zeros(self.inputs.shape)
+        input_ranking = np.argsort(self.inputs, axis=0)
+
+        for i in range(self.__n_rows):
+            row = np.argwhere(input_ranking == self.golden_ranking[i])
+            final_ranking[i, :] = row[:, 0].T
+
+        return np.sum(np.abs(final_ranking - self.ideal_ranking))
 
     def _normalize_srd(self, srds: ndarray) -> ndarray:
         """
