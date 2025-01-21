@@ -7,7 +7,6 @@ from scipy.stats import norm
 
 from matplotlib import pyplot as plt
 
-from qsrr_ic.analysis.srd import SumOfRankingDifferences
 from qsrr_ic.error_handling import ErrorHandling
 
 
@@ -89,11 +88,11 @@ class SRDViewModel:
 
     def prepare_data_for_plotting(self) -> SrdVisualizerData:
         x_values = np.linspace(
-            self.model.normalized_data.min(),
-            self.model.normalized_data.max(),
+            self.model.normalized_random_srds.min(),
+            self.model.normalized_random_srds.max(),
             SrdVisualizerConstants.N_POINTS
         )
-        pdf_values = self.model.calculate_pdf(x_values)
+        pdf_values = self.model.calculate_pdf(x_values) * 100  # In percentages
         return SrdVisualizerData(
             normalized_srds=self.model.normalized_srds,
             normalized_random_srds=self.model.normalized_random_srds,
@@ -149,15 +148,17 @@ class SrdVisualizer:
 
     def __init__(
         self,
-        srd: SumOfRankingDifferences
+        normalized_srds: ndarray,
+        normalized_random_srds: ndarray
     ):
-        self._srd = srd
+        self._normalized_srds = normalized_srds
+        self._normalized_random_srds = normalized_random_srds
 
     def visualize(self):
 
         model = SRDModel(
-            normalized_srds=self._srd.normalized_srds,
-            normalized_random_srds=self._srd.normalized_random_srds
+            normalized_srds=self._normalized_srds,
+            normalized_random_srds=self._normalized_random_srds
         )
         view_model = SRDViewModel(model)
 
