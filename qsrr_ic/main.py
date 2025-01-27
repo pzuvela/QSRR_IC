@@ -89,7 +89,7 @@ def main(
             optimizer: QsrrModelOptimizer
             optimizer_results: OptimizerResults
 
-            optimizer, optimizer_results = optimizer_runner.run(
+            optimizer_results, optimizer = optimizer_runner.run(
                 optimizer_settings=optimizer_settings,
                 qsrr_train_data=qsrr_train_data,
                 qsrr_test_data=qsrr_test_data

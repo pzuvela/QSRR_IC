@@ -49,7 +49,7 @@
         "verbosity": 10
     },
     "cross_validation": null,
-    "optimization": null,
+    "global_search": null,
     "srd": {
         "use_srd": true,
         "settings": {

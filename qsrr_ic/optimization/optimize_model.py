@@ -180,6 +180,7 @@ class QsrrModelOptimizer:
             updating="deferred",
             mutation=self.optimizer_settings.global_search_settings.mutation_rate,
             popsize=self.optimizer_settings.global_search_settings.population_size,
+            disp=True
         )
         self.optimal_hyper_parameters = self.get_hyper_parameters_registry(optimal_hyper_parameters.x)
 
